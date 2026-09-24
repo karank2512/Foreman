@@ -2,7 +2,7 @@
 
 How to run the AI Staffing Agency in production: what the pieces are, how to configure them, how to release, and
 what to do when something breaks. Threat model, key handling and incident response live in
-[`docs/SECURITY.md`](./SECURITY.md); day-2 conventions live in [`docs/OPERATIONS.md`](./OPERATIONS.md).
+[`docs/SECURITY.md`](./SECURITY.md).
 
 ---
 
