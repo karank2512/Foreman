@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
+import { chartDays, dayLabelStep } from "@/app/(app)/usage/_lib/chart-days";
 import { spendTrend } from "@/app/(app)/usage/_lib/trend";
 import type { UsageWorkerRow } from "@/server/queries/usage";
 import { loadForSsr } from "./_ssr";
@@ -75,5 +76,43 @@ describe("usage › by worker (design-detail-16, design-detail-23)", () => {
     expect(html).toContain("Platform (scoping, reviews, chat)");
     // Still no link: there is no worker to open.
     expect(html).not.toContain('href="?tab=cost"');
+  });
+});
+
+describe("usage › the day-by-day chart's props (design-detail-16)", () => {
+  // Client-component props are serialized into the page payload, so anything passed through is readable in the
+  // browser even when nothing renders it.
+  const byDay = [
+    { date: "2026-09-26", costUsd: 0.5, billableUsd: 0.7, modelCostUsd: 0.4, toolCostUsd: 0.1 },
+    { date: "2026-09-27", costUsd: 0, billableUsd: 0, modelCostUsd: 0, toolCostUsd: 0 },
+  ];
+
+  it("hands the client only what the chart draws, so the billable figure and the margin never leave the server", () => {
+    const days = chartDays(byDay);
+    expect(days).toEqual([
+      { date: "2026-09-26", modelCostUsd: 0.4, toolCostUsd: 0.1 },
+      { date: "2026-09-27", modelCostUsd: 0, toolCostUsd: 0 },
+    ]);
+    expect(JSON.stringify(days)).not.toMatch(/billable/i);
+  });
+});
+
+describe("usage › day labels fit the chart", () => {
+  it("keeps the desktop cadence — at most eight labels — on a wide plot and before the first measure", () => {
+    expect(dayLabelStep(7, 1056)).toBe(1);
+    expect(dayLabelStep(30, 1056)).toBe(4);
+    expect(dayLabelStep(90, 1056)).toBe(12);
+    expect(dayLabelStep(30, 0)).toBe(4);
+    expect(dayLabelStep(30, -40)).toBe(4);
+  });
+
+  it("labels fewer days on a phone so 'Sep 21Sep 22…' never runs together", () => {
+    // A 390px screen leaves about 270px of plot inside the card.
+    expect(dayLabelStep(7, 270)).toBe(2);
+    expect(dayLabelStep(30, 270)).toBe(8);
+    expect(dayLabelStep(90, 270)).toBe(23);
+    // However narrow, one label still shows.
+    expect(dayLabelStep(7, 10)).toBe(7);
+    expect(dayLabelStep(0, 270)).toBe(1);
   });
 });

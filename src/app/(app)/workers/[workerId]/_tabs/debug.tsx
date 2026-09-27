@@ -10,8 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 import { isAppError } from "@/server/errors";
 import { getWorkerDebug, type WorkerDebugView } from "@/server/queries/worker-manage";
-import { Sep } from "../_components/rows";
-import { DebugModelCallList, DebugToolCallList } from "./debug-call-lists";
+import { Fact, Facts } from "../_components/rows";
+import { DebugModelCallList, DebugToolCallList, simulatedNote } from "./debug-call-lists";
 import type { WorkerTabProps } from "./types";
 
 /**
@@ -34,27 +34,24 @@ export default async function DebugTab({ session, workerId, workerName }: Worker
           Raw model calls and tool traces, for troubleshooting. Nothing here is needed to manage {workerName} —
           everything is collapsed by default.
         </p>
-        <p className="text-footnote mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-          <span className="font-mono">{data.worker.id}</span>
-          <CopyButton value={data.worker.id} />
+        {/* The worker's id is already in the address bar; the version id is the one a trace needs. */}
+        <Facts className="mt-3">
           {data.currentVersion ? (
             <>
-              <Sep />
-              <span>version {data.currentVersion.version}</span>
-              <span className="font-mono">{data.currentVersion.id}</span>
-              <CopyButton value={data.currentVersion.id} />
-              <Sep />
-              <StatusBadge kind="version" status={data.currentVersion.status} emphasis="dot" />
-              <Sep />
-              <span>{data.currentVersion.locked ? "locked (has run)" : "unlocked"}</span>
+              <Fact>Version {data.currentVersion.version}</Fact>
+              <Fact>
+                <StatusBadge kind="version" status={data.currentVersion.status} emphasis="dot" />
+              </Fact>
+              <Fact>{data.currentVersion.locked ? "Locked (has run)" : "Unlocked"}</Fact>
+              <Fact>
+                <span className="min-w-0 truncate font-mono">{data.currentVersion.id}</span>
+                <CopyButton value={data.currentVersion.id} />
+              </Fact>
             </>
           ) : (
-            <>
-              <Sep />
-              <span>no current version</span>
-            </>
+            <Fact>No current version</Fact>
           )}
-        </p>
+        </Facts>
       </div>
 
       <Section title="Current blueprint" description="The design the runtime executes, exactly as stored.">
@@ -82,20 +79,22 @@ export default async function DebugTab({ session, workerId, workerName }: Worker
       <Section title="Latest checkpoint" description="Where the most recent run left off — what a resume starts from.">
         {data.latestRun ? (
           <div className="space-y-3">
-            <p className="text-footnote flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-              <StatusBadge kind="run" status={data.latestRun.status} emphasis="dot" />
-              <Sep />
-              <span>{data.latestRun.trigger.toLowerCase()}</span>
-              <Sep />
-              <span>attempt {data.latestRun.attempt}</span>
-              <Sep />
-              <span>{formatDateTime(data.latestRun.createdAt)}</span>
-              {data.latestRun.simulated ? <SimulatedBadge /> : null}
-              <Sep />
-              <Link href={`/runs/${data.latestRun.id}`} className="text-link hover:underline">
-                Open run ›
-              </Link>
-            </p>
+            <Facts>
+              <Fact>
+                <StatusBadge kind="run" status={data.latestRun.status} emphasis="dot" />
+              </Fact>
+              <Fact>{data.latestRun.trigger.toLowerCase()}</Fact>
+              <Fact>attempt {data.latestRun.attempt}</Fact>
+              <Fact>
+                {formatDateTime(data.latestRun.createdAt)}
+                {data.latestRun.simulated ? <SimulatedBadge /> : null}
+              </Fact>
+              <Fact>
+                <Link href={`/runs/${data.latestRun.id}`} className="text-link hover:underline">
+                  Open run ›
+                </Link>
+              </Fact>
+            </Facts>
             {data.latestRun.error ? <p className="text-footnote text-danger">{data.latestRun.error}</p> : null}
             {data.latestRun.checkpoint === null ? (
               <p className="text-footnote text-muted-foreground">
@@ -119,7 +118,10 @@ export default async function DebugTab({ session, workerId, workerName }: Worker
 
       <Section
         title="Model calls"
-        description={`The last ${data.modelCalls.length} LLM calls made on behalf of ${workerName}, newest first. Expand a row for the request and response.`}
+        description={withNote(
+          `The last ${data.modelCalls.length} LLM calls made on behalf of ${workerName}, newest first. Expand a row for the request and response.`,
+          simulatedNote(data.modelCalls),
+        )}
       >
         <Card className="gap-0 py-0">
           {data.modelCalls.length === 0 ? (
@@ -136,7 +138,10 @@ export default async function DebugTab({ session, workerId, workerName }: Worker
 
       <Section
         title="Tool calls"
-        description={`The last ${data.toolCalls.length} tool calls across ${workerName}'s runs, newest first.`}
+        description={withNote(
+          `The last ${data.toolCalls.length} tool calls across ${workerName}'s runs, newest first.`,
+          simulatedNote(data.toolCalls),
+        )}
       >
         <Card className="gap-0 py-0">
           {data.toolCalls.length === 0 ? (
@@ -156,4 +161,8 @@ export default async function DebugTab({ session, workerId, workerName }: Worker
       </Section>
     </>
   );
+}
+
+function withNote(description: string, note: string | null): string {
+  return note ? `${description} ${note}` : description;
 }

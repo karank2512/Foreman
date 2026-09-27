@@ -78,22 +78,27 @@ describe("stat strip (src/components/stat-card.tsx)", () => {
 });
 
 describe("44px touch targets under md", () => {
-  it("gives every button size below 44px an invisible hit area, and text links a taller one than pills", async () => {
+  it("gives every button size below 44px an invisible hit area (rendered classes: shell-render.test.ts)", async () => {
     const button = await read("src/components/ui/button.tsx");
     expect(button).toMatch(/"group\/button relative inline-flex/);
     // Only the `size` block — the `variant` block has its own `default:` line.
     const sizes = button.slice(button.indexOf("size: {"), button.indexOf("compoundVariants")).split("\n");
-    for (const size of ["xs:", "sm:", "default:", "icon:", '"icon-xs":', '"icon-sm":', '"icon-lg":']) {
-      const line = sizes.find((l) => l.trim().startsWith(size)) ?? "";
-      expect(line, size).toMatch(/max-md:before:-inset(-y)?-[\d.]+/);
+    for (const size of ["xs:", "sm:", "default:"]) {
+      expect(sizes.find((l) => l.trim().startsWith(size)) ?? "", size).toContain("${HIT_AREA}");
+    }
+    for (const size of ["icon:", '"icon-xs":', '"icon-sm":', '"icon-lg":']) {
+      expect(sizes.find((l) => l.trim().startsWith(size)) ?? "", size).toContain("${HIT_SQUARE}");
     }
     // lg/xl are already 44px+ and must not grow further.
     for (const size of ["lg:", "xl:"]) {
       const line = sizes.find((l) => l.trim().startsWith(size)) ?? "";
+      expect(line, size).not.toContain("HIT_");
       expect(line, size).not.toContain("max-md:before");
     }
-    // The link compound variant runs after the size variant, so its 3.5 wins over the pill's 1.
-    expect(button).toContain("max-md:before:-inset-y-3.5");
+    // A fixed 44px box, not an inset derived from the drawn height (which lost the 1px border: 42px measured).
+    expect(button).not.toMatch(/max-md:before:-inset/);
+    expect(button).toContain("max-md:before:h-11");
+    expect(button).toContain("max-md:before:size-11");
   });
 
   it("makes segmented options, local-nav links and the back link tappable", async () => {

@@ -1,7 +1,7 @@
 import type { JobFamily } from "@/server/domain";
 import { CADENCE_ADJECTIVE, FAMILY_DEFAULT_CADENCE, detectCadence } from "./cues";
 import { GEOS, firstSentence, jobObject, startsWithWorkVerb } from "./describe";
-import { FAMILY_PROFILES } from "./families";
+import { isReleaseDigest, profileFor } from "./digest";
 
 /**
  * Working titles for simulated scoping. A title is a short noun phrase (≤ 60 chars, never an ellipsis) that
@@ -19,6 +19,8 @@ const GENERIC_NOUNS = /^(?:pages?|sites?|websites?|data|information|info|details
 const CONTENT_NOUNS = /^(?:posts?|articles?|newsletters?|drafts?|copy|emails?|threads?|blogs?|scripts?|summaries|captions?|updates)$/i;
 const TRACK_VERBS = /^(?:track|monitor|watch|check|scan|keep an eye on|keep track of|keep tabs on)$/i;
 const COMPANY_FAMILIES = new Set<JobFamily>(["lead_research", "market_research", "market_analysis"]);
+/** "what our competitors shipped", "who raised this week": a clause, not a noun phrase a title can be built on. */
+const CLAUSE_OBJECT = /^(?:what|who|whom|whose|which|how|why|when|where|whether|if)\b/i;
 
 const cap = (s: string) => (s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
@@ -85,7 +87,7 @@ function fit(geo: string, words: string[], suffix: string[]): string {
 
 function synthesize(description: string, family: JobFamily): string | null {
   const object = jobObject(description);
-  if (!object) return null;
+  if (!object || CLAUSE_OBJECT.test(object.core)) return null;
   let phrase = object.core.replace(/['’]s\b/g, "").replace(/['’]/g, "");
   let funding = false;
 
@@ -146,7 +148,7 @@ function synthesize(description: string, family: JobFamily): string | null {
 
 function fallback(description: string, family: JobFamily): string {
   const cadence = detectCadence(description, FAMILY_DEFAULT_CADENCE[family]);
-  return `${CADENCE_ADJECTIVE[cadence.kind]} ${FAMILY_PROFILES[family].deliverableNoun}`;
+  return `${CADENCE_ADJECTIVE[cadence.kind]} ${profileFor(family, description).deliverableNoun}`;
 }
 
 /** A working title for the job: the customer's first sentence when it already reads like one, else a synthesis. */
@@ -157,5 +159,7 @@ export function draftTitleFrom(description: string, family: JobFamily): string {
     const words = nounPhrase.split(/\s+/).filter((w) => w.length > 0);
     if (words.length >= 2 && words.length <= 8 && nounPhrase.length <= MAX_TITLE_CHARS) return cap(nounPhrase);
   }
+  // A digest is named for what it is ("Weekly Competitor Digest"), not for the clause it summarizes.
+  if (family === "market_research" && isReleaseDigest(description)) return fallback(description, family);
   return synthesize(description, family) ?? fallback(description, family);
 }

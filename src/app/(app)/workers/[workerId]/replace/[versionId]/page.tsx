@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Section } from "@/components/section";
 import { SimulatedBadge } from "@/components/simulated-badge";
 import { WorkerAvatar } from "@/components/worker-avatar";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { requireSession } from "@/server/auth";
 import { isAppError } from "@/server/errors";
 import { getReplacePageData, type ReplacePageView } from "@/server/queries/worker-manage";
@@ -120,16 +120,22 @@ export default async function ReplacePage({ params }: PageProps) {
             title={open ? "Every difference" : "What changed"}
             description={`The full diff between ${baseLabel} and version ${target.version}, in plain terms.`}
           >
-            <ChangeList entries={data.diff} baseLabel={baseLabel} targetLabel={`Version ${target.version}`} />
+            <ChangeList
+              entries={data.diff}
+              baseLabel={baseLabel}
+              targetLabel={`Version ${target.version}`}
+              toolNames={Object.fromEntries([...base.tools, ...target.tools].map((t) => [t.toolName, t.displayName]))}
+            />
           </Section>
         ) : null}
 
+        {/* The version's story in one line; its id is for the Debug tab, not for the person deciding. */}
         <p className="text-footnote flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-          <span>Drafted {formatDateTime(target.createdAt)}</span>
-          {target.activatedAt ? <span>· hired {formatDateTime(target.activatedAt)}</span> : null}
-          {target.retiredAt ? <span>· retired {formatDateTime(target.retiredAt)}</span> : null}
-          <span>·</span>
-          <span className="font-mono">{target.id}</span>
+          <span title={formatDateTime(target.createdAt)}>
+            Version {target.version}, drafted {formatDate(target.createdAt)}
+          </span>
+          {target.activatedAt ? <span title={formatDateTime(target.activatedAt)}>· hired {formatDate(target.activatedAt)}</span> : null}
+          {target.retiredAt ? <span title={formatDateTime(target.retiredAt)}>· retired {formatDate(target.retiredAt)}</span> : null}
           {data.simulated ? <SimulatedBadge /> : null}
         </p>
       </div>

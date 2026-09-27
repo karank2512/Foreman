@@ -111,7 +111,9 @@ describe("spec-change derivation", () => {
     for (const c of next.components) {
       if (c.type === "agent") expect(c.instructions).toContain("Standing instruction from your manager: Include the lead investor for every round.");
     }
-    expect(changes[0]).toContain("standing instruction for Researcher and Analyst");
+    // Says which part of the work changes, in the manager's words — not the design's internal role names.
+    expect(changes[0]).toContain("a standing instruction for the research and analysis steps");
+    expect(changes[0]).not.toMatch(/Researcher|Analyst/);
     expect(next.schedule).toEqual(blueprint.schedule);
   });
 });
@@ -176,7 +178,10 @@ describe("sendMessageToWorker", () => {
     const href = `/workers/${hired.worker.id}/replace/${versionId}`;
     expect(reply.metadata).toMatchObject({ proposedVersionId: versionId, href });
     expect(reply.content).toContain("for your approval");
-    expect(reply.content).toContain(href);
+    // The link travels in the metadata (the "Compare and decide" card); the prose never quotes a path or an id.
+    expect(reply.content).not.toContain(href);
+    expect(reply.content).not.toContain(versionId);
+    expect(reply.content).not.toMatch(/\/workers\//);
 
     const comparison = await getVersionComparison(t.organization.id, versionId);
     expect(comparison.base?.id).toBe(hired.version.id);
@@ -190,6 +195,18 @@ describe("sendMessageToWorker", () => {
     // The worker keeps working as before until the proposal is applied.
     expect((await db.worker.findUniqueOrThrow({ where: { id: hired.worker.id } })).currentVersionId).toBe(hired.version.id);
     expect(await activityOf(t.organization.id, hired.worker.id, "VERSION_PROPOSED")).toHaveLength(1);
+  });
+
+  it("answers a lasting change in contractor language: no path, no version id, no internal role names", async () => {
+    const result = await sendMessageToWorker(t.session, hired.worker.id, "From now on, always add a column with the lead investor's website.");
+    expect(result.classification).toBe("SPEC_CHANGE");
+    const reply = await db.workerMessage.findUniqueOrThrow({ where: { id: result.replyMessageId } });
+    expect(reply.content).toContain("I've drafted version 2 for your approval");
+    expect(reply.content).toContain("a standing instruction for the research and analysis steps");
+    expect(reply.content).toContain(`until then I keep working as ${hired.worker.name} v1`);
+    expect(reply.content).not.toMatch(/\/workers\/|\breplace\b|Researcher|Analyst|Versions tab \(/);
+    expect(reply.content).not.toContain(result.proposedVersionId!);
+    expect(reply.metadata).toMatchObject({ href: `/workers/${hired.worker.id}/replace/${result.proposedVersionId}` });
   });
 
   it("answers a question from the worker's real record", async () => {

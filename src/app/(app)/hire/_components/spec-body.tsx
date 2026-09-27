@@ -65,16 +65,23 @@ export function DeliverableSection({ spec }: { spec: JobSpec }) {
         <div className="space-y-2.5">
           <p className="text-callout font-medium text-muted-foreground">Each record carries</p>
           <ul className="space-y-2">
-            {deliverable.fields.map((field) => (
-              <li key={field.name}>
-                <span className="font-mono text-[15px]">{field.name}</span>
-                <span className="text-muted-foreground">
-                  {" — "}
-                  {field.description}
-                  {field.required ? " (required)" : ""}
-                </span>
-              </li>
-            ))}
+            {deliverable.fields.map((field) => {
+              const label = sentenceCase(field.name);
+              // The scoper often describes a field with its own name ("lead_investor — Lead investor"); say it once.
+              const describes = field.description.trim().toLowerCase() !== label.toLowerCase();
+              return (
+                <li key={field.name}>
+                  {/* The exact column key stays one hover away for whoever maps it into a CRM. */}
+                  <span title={field.name} className="font-medium">
+                    {label}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {describes ? ` — ${field.description}` : null}
+                    {field.required ? " (required)" : ""}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

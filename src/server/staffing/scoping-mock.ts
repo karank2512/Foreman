@@ -20,8 +20,9 @@ import {
   mentionsSending,
 } from "./cues";
 import { KEEP_IN_WORKSPACE, jobObject } from "./describe";
+import { profileFor } from "./digest";
 import { detectFamily } from "./family-cues";
-import { FAMILY_PROFILES } from "./families";
+import { fieldList } from "./labels";
 import { impliedAnswers, scopingQuestionsFor } from "./questions";
 import { specFields, specResponsibilities } from "./spec-fields";
 import { draftTitleFrom } from "./title";
@@ -86,7 +87,7 @@ const PLANS_PER_VENDOR = 3;
 
 export function mockJobSpec(args: MockSpecArgs): JobSpec {
   const family = args.jobFamily;
-  const profile = FAMILY_PROFILES[family];
+  const profile = profileFor(family, args.description);
   const asked = (args.intake?.questions ?? []).map((q) => q.id);
   // What the description already answered fills in for the questions that were skipped; real answers win.
   const answers = { ...impliedAnswers(family, args.description, asked), ...answersOf(args.intake) };
@@ -100,9 +101,11 @@ export function mockJobSpec(args: MockSpecArgs): JobSpec {
 
   const volumeAnswer = detectCount(answers.volume ?? "");
   const described = detectCount(args.description);
-  // "Our five competitors" at plan level means rows per plan, not per competitor.
+  // "Our five competitors" at plan level means rows per plan, not per competitor; in a digest, updates per competitor.
   const perPlanRows = volumeAnswer === undefined && described !== undefined && fields.perPlan;
-  const targetCount = volumeAnswer ?? (described !== undefined ? (perPlanRows ? described * PLANS_PER_VENDOR : described) : profile.targetCount);
+  const perCompany = volumeAnswer === undefined && described !== undefined && !perPlanRows && !fields.custom ? profile.recordsPerCompany : undefined;
+  const rowsPerDescribed = perPlanRows ? PLANS_PER_VENDOR : (perCompany ?? 1);
+  const targetCount = volumeAnswer ?? (described !== undefined ? described * rowsPerDescribed : profile.targetCount);
 
   const recipientsAnswer = answers.recipients ?? "";
   const emails = extractEmails(everything);
@@ -139,8 +142,12 @@ export function mockJobSpec(args: MockSpecArgs): JobSpec {
   const criteria = profile.successCriteria.map((c) => (c.metric === "Records per run" ? { ...c, target: `>= ${targetCount}` } : c));
   const assumptions = [...profile.assumptions];
   if (perPlanRows) assumptions.push(`About ${PLANS_PER_VENDOR} plans per vendor, so about ${targetCount} plan rows per run.`);
+  if (perCompany) assumptions.push(`About ${perCompany} notable ${profile.recordNoun} per company, so about ${targetCount} ${profile.recordNoun} per run.`);
   const unknown = fields.fields.filter((f) => !f.required && fields.custom && !profile.fields.some((p) => p.name === f.name));
-  if (unknown.length > 0) assumptions.push(`${unknown.map((f) => f.name).join(", ")} ${unknown.length === 1 ? "is" : "are"} filled when the source states it and left empty otherwise.`);
+  if (unknown.length > 0) {
+    const named = fieldList(unknown.map((f) => f.name));
+    assumptions.push(`${named.charAt(0).toUpperCase()}${named.slice(1)} ${unknown.length === 1 ? "is filled when the source states it" : "are filled when the source states them"} and left empty otherwise.`);
+  }
 
   return JobSpecSchema.parse({
     schemaVersion: 1,

@@ -40,13 +40,20 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/**
+ * Every branch of the status line is the same one-line flex row at footnote size. A bare badge (inline-flex) or
+ * a bare <a> sits in an anonymous line box sized by the card's body text, and an inline box also ignores the
+ * margin CardContent spaces its children with — so the fact grid would start at a different height on each card.
+ */
+const STATUS_ROW = "flex min-w-0 items-center gap-x-1.5 text-footnote";
+
 /** The one state that matters right now: working → needs attention → paused → on the job. */
 function StatusLine({ worker }: { worker: WorkerCardView }) {
   if (worker.activeRun) {
     return (
       <Link
         href={`/runs/${worker.activeRun.id}`}
-        className="w-fit rounded-sm outline-none"
+        className={`${STATUS_ROW} w-fit rounded-sm outline-none`}
         title="Open the run"
       >
         <StatusBadge kind="run" status={worker.activeRun.status} emphasis="dot" />
@@ -57,7 +64,7 @@ function StatusLine({ worker }: { worker: WorkerCardView }) {
     // One line that never wraps: the reason clips with an ellipsis (full text on hover) rather than breaking
     // onto a second line that would start with the separator.
     return (
-      <p className="flex min-w-0 items-center gap-x-1.5 text-footnote text-warning">
+      <p className={`${STATUS_ROW} text-warning`}>
         <StatusBadge kind="health" status="NEEDS_ATTENTION" emphasis="dot" />
         {worker.healthReason ? (
           <>
@@ -70,7 +77,11 @@ function StatusLine({ worker }: { worker: WorkerCardView }) {
       </p>
     );
   }
-  return <StatusBadge kind="worker" status={worker.status} emphasis="dot" />;
+  return (
+    <p className={STATUS_ROW}>
+      <StatusBadge kind="worker" status={worker.status} emphasis="dot" />
+    </p>
+  );
 }
 
 export interface WorkerCardProps {

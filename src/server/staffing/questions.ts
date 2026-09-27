@@ -1,6 +1,6 @@
 import { MAX_FOLLOW_UP_QUESTIONS, type FollowUpQuestion, type JobFamily } from "@/server/domain";
 import { jobObject, readFacets, type DescriptionFacets } from "./describe";
-import { FAMILY_PROFILES } from "./families";
+import { profileFor } from "./digest";
 
 /**
  * Simulated follow-up questions that respect what the customer already said. Each family's question set is
@@ -159,7 +159,7 @@ const OPEN_QUESTION: Partial<Record<JobFamily, FollowUpQuestion>> = {
 export function scopingQuestionsFor(family: JobFamily, description: string): FollowUpQuestion[] {
   const facets = readFacets(description);
   const kept: FollowUpQuestion[] = [];
-  for (const q of FAMILY_PROFILES[family].questions) {
+  for (const q of profileFor(family, description).questions) {
     const decision = decide(family, q, description, facets);
     if (decision.keep) kept.push(decision.question);
   }
@@ -208,7 +208,8 @@ function targetPhrase(description: string): string | null {
 export function impliedAnswers(family: JobFamily, description: string, asked: readonly string[]): Record<string, string> {
   const f = readFacets(description);
   const out: Record<string, string> = {};
-  const skipped = (id: string) => FAMILY_PROFILES[family].questions.some((q) => q.id === id) && !asked.includes(id);
+  const questions = profileFor(family, description).questions;
+  const skipped = (id: string) => questions.some((q) => q.id === id) && !asked.includes(id);
   const profile = targetPhrase(description);
   if (skipped("focus") && profile) out.focus = profile;
   if (skipped("icp") && profile) out.icp = profile;

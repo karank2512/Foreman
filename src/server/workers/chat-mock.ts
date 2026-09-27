@@ -267,14 +267,16 @@ export function temporaryInstructionReply(ctx: WorkerChatContext, instruction: s
   return `Got it — I'll apply this on my next run: “${clip(instruction, 200)}”. ${next}${holding}`;
 }
 
-/** Templated reply when a spec change was turned into a proposed version. */
+/**
+ * Templated reply when a spec change was turned into a proposed version. The link to the proposal travels in the
+ * message metadata and renders as a card under the bubble, so the prose never quotes a path or an id.
+ */
 export function specChangeReply(args: {
   ctx: WorkerChatContext;
   version: number;
   changes: readonly string[];
   perRunBefore: number;
   perRunAfter: number;
-  href: string;
 }): string {
   const { ctx } = args;
   const cost =
@@ -282,5 +284,5 @@ export function specChangeReply(args: {
       ? `The estimated cost stays around ${money(args.perRunAfter)} per run.`
       : `The estimated cost moves from ${money(args.perRunBefore)} to ${money(args.perRunAfter)} per run.`;
   const changes = args.changes.length > 0 ? ` What changes: ${args.changes.join("; ")}.` : "";
-  return `That changes how I work, so rather than changing anything on my own I've drafted version ${args.version} for your approval.${changes} ${cost} Review it and apply the change from my Versions tab (${args.href}); until then I keep working as ${ctx.worker.name} v${ctx.versionNumber}.`;
+  return `That changes how I work, so rather than changing anything on my own I've drafted version ${args.version} for your approval.${changes} ${cost} Compare the two versions and apply the change when you're ready; until then I keep working as ${ctx.worker.name} v${ctx.versionNumber}.`;
 }

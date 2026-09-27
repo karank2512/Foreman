@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatDate, formatUsd, formatUsdPrecise } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { dayLabelStep } from "../_lib/chart-days";
 
 export interface UsageChartProps {
   /** One entry per calendar day, oldest first, zero-filled (`date` = yyyy-MM-dd). */
@@ -14,6 +15,9 @@ export interface UsageChartProps {
 type Point = UsageChartProps["byDay"][number] & { label: string; totalCostUsd: number };
 
 const AXIS_TICK = { fill: "var(--chart-axis)", fontSize: 12 } as const;
+/** The chart margins and y-axis width below; the plot is what is left of the container for the day labels. */
+const MARGIN = { top: 8, right: 4, bottom: 0, left: -12 } as const;
+const Y_AXIS_WIDTH = 56;
 
 /** Local-day parse: `new Date("2026-09-12")` would be UTC midnight and shift a day in western time zones. */
 function localDay(key: string): Date {
@@ -36,7 +40,9 @@ export function UsageChart({ byDay, className }: UsageChartProps) {
     [byDay],
   );
   const max = Math.max(0, ...data.map((d) => d.totalCostUsd));
-  const tickEvery = Math.max(1, Math.ceil(data.length / 8));
+  // Measured so the day labels thin out on a phone instead of running together; 0 until the first measure.
+  const [width, setWidth] = useState(0);
+  const tickEvery = dayLabelStep(data.length, width - Y_AXIS_WIDTH - MARGIN.left - MARGIN.right);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -56,10 +62,10 @@ export function UsageChart({ byDay, className }: UsageChartProps) {
         role="img"
         aria-label="Daily cost, model time stacked on tool fees, oldest to newest"
       >
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>
           <BarChart
             data={data}
-            margin={{ top: 8, right: 4, bottom: 0, left: -12 }}
+            margin={MARGIN}
             barCategoryGap={data.length > 31 ? "14%" : "26%"}
           >
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
@@ -79,7 +85,7 @@ export function UsageChart({ byDay, className }: UsageChartProps) {
               tick={AXIS_TICK}
               tickLine={false}
               axisLine={false}
-              width={56}
+              width={Y_AXIS_WIDTH}
             />
             <Tooltip
               cursor={{ fill: "var(--muted)", opacity: 0.7 }}

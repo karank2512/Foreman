@@ -43,7 +43,7 @@ export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) 
           <SettingsRow label="Runs at once">
             <SettingsValue className="metric">{pluralize(executor.concurrency, "run")}</SettingsValue>
           </SettingsRow>
-          <SettingsRow label="Scheduler tick">
+          <SettingsRow label="Checks schedules">
             <SettingsValue className="metric">every {formatDuration(executor.schedulerTickMs)}</SettingsValue>
           </SettingsRow>
           <SettingsRow label="Recovers a stuck run" hint="A run whose worker died is handed back to the queue.">

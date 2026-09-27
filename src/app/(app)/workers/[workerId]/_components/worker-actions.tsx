@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import type { WorkerStatus } from "@prisma/client";
+import type { RunStatus, WorkerStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,7 +44,18 @@ export interface WorkerActionsProps {
    * already owns the bottom of the screen.
    */
   floatOnMobile?: boolean;
+  /** The run already under way, if any — "Run now" then reads "Run again" and the dialog says so. */
+  inFlightStatus?: RunStatus | null;
+  /** One-off instructions from the chat that the next run (this one) will pick up. */
+  queuedInstructions?: number;
 }
+
+/** Where the run already under way stands, in the dialog's words. */
+const IN_FLIGHT_PHRASE: Partial<Record<RunStatus, string>> = {
+  QUEUED: "has a run queued",
+  RUNNING: "is in the middle of a run",
+  WAITING_FOR_APPROVAL: "has a run waiting on your approval",
+};
 
 /**
  * One primary pill ("Run now") and a "…" menu for everything else — pause, replace, performance review, retire.
@@ -57,6 +68,8 @@ export function WorkerActions({
   hasCurrentVersion,
   permissions,
   floatOnMobile = true,
+  inFlightStatus = null,
+  queuedInstructions = 0,
 }: WorkerActionsProps) {
   const router = useRouter();
   const [runOpen, setRunOpen] = useState(false);
@@ -95,7 +108,7 @@ export function WorkerActions({
       setRunOpen(false);
       setInstructions("");
       toast.success(`${workerName} is on it`, {
-        description: instructions.trim()
+        description: instructions.trim() || queuedInstructions > 0
           ? "Your one-off instructions will be applied to this run."
           : "The run has been queued and will start shortly.",
         action: { label: "Watch live", onClick: () => router.push(`/runs/${r.data.runId}`) },
@@ -124,7 +137,7 @@ export function WorkerActions({
       onClick={canRun ? () => setRunOpen(true) : undefined}
       className="max-sm:h-11 max-sm:flex-1 max-sm:text-[15px]"
     >
-      {running ? "Starting…" : "Run now"}
+      {running ? "Starting…" : inFlightStatus ? "Run again" : "Run now"}
     </Button>
   );
 
@@ -153,12 +166,24 @@ export function WorkerActions({
         )}
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Ask {workerName} to run now</DialogTitle>
+            <DialogTitle>{inFlightStatus ? `Ask ${workerName} to run again` : `Ask ${workerName} to run now`}</DialogTitle>
             <DialogDescription>
-              {workerName} will start a fresh run right away, on top of the regular schedule. Add one-off
-              instructions if this run should be different.
+              {inFlightStatus
+                ? `${workerName} ${IN_FLIGHT_PHRASE[inFlightStatus] ?? "already has a run under way"}. This adds another run on top of it.`
+                : `${workerName} will start a fresh run right away, on top of the regular schedule.`}{" "}
+              Add one-off instructions if this run should be different.
             </DialogDescription>
           </DialogHeader>
+          {queuedInstructions > 0 ? (
+            <p className="text-callout rounded-[12px] bg-muted px-4 py-3 text-pretty">
+              {queuedInstructions === 1
+                ? "1 one-off instruction from your chat is already queued, so this run picks it up too."
+                : `${queuedInstructions} one-off instructions from your chat are already queued, so this run picks them up too.`}{" "}
+              <Link href={`/workers/${workerId}?tab=chat`} className="text-link hover:underline">
+                See the chat ›
+              </Link>
+            </p>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="run-now-instructions">One-off instructions (optional)</Label>
             <Textarea

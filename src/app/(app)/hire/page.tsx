@@ -15,8 +15,9 @@ import { DescribeForm } from "./_components/describe-form";
 import { HireProgress } from "./_components/hire-progress";
 import { ProposalActions } from "./_components/proposal-actions";
 import { ProposalPending } from "./_components/proposal-pending";
-import { ProposalPipeline, ProposalRationale, ProposalResume } from "./_components/proposal-profile";
-import { ProposalCost, ProposalJudging, ProposalKpis } from "./_components/proposal-terms";
+import { ProposalDetails } from "./_components/proposal-details";
+import { ProposalPipeline, ProposalResume } from "./_components/proposal-profile";
+import { ProposalCost, ProposalKpis } from "./_components/proposal-terms";
 import { ResumeList } from "./_components/resume-list";
 import { SpecDocument } from "./_components/spec-document";
 import { exampleJobById, stepKeyFor } from "./schema";
@@ -164,10 +165,8 @@ export default async function HirePage({
         <HireProgress current="proposal" />
         <BackToHire />
         <ProposalResume proposal={proposal} toolMeta={toolMeta} />
+        {/* The facts that decide a hire stay open; the reasoning and the review method fold away at the end. */}
         <div className="mt-14 space-y-14">
-          <Section title="Why this design" description={`How the staffing engine matched “${state.spec.title}”.`}>
-            <ProposalRationale proposal={proposal} />
-          </Section>
           <Section title="How the work flows" description="Every run walks these steps in order.">
             <ProposalPipeline proposal={proposal} jobTitle={state.spec.title} />
           </Section>
@@ -177,9 +176,7 @@ export default async function HirePage({
           <Section title="Cost and schedule">
             <ProposalCost proposal={proposal} />
           </Section>
-          <Section title="How the work gets reviewed">
-            <ProposalJudging proposal={proposal} />
-          </Section>
+          <ProposalDetails proposal={proposal} specTitle={state.spec.title} />
         </div>
         <ProposalActions
           jobId={state.job.id}

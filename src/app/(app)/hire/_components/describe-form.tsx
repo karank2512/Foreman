@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
+import { useId, useRef, useState, useSyncExternalStore, useTransition, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { scopeJobAction } from "../actions";
-import { DESCRIPTION_MAX_CHARS, DESCRIPTION_MIN_CHARS, DESCRIPTION_PLACEHOLDER, EXAMPLE_JOBS } from "../schema";
+import { DESCRIPTION_MAX_CHARS, DESCRIPTION_MIN_CHARS, DESCRIPTION_PLACEHOLDER, EXAMPLE_JOBS, submitShortcutLabel } from "../schema";
 import { InlineError, StepBar } from "./step-bar";
+
+/** The platform never changes while the page is open, so there is nothing to subscribe to. */
+const subscribeNever = () => () => {};
+
+function platformShortcut(): string {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return submitShortcutLabel(nav.userAgentData?.platform || nav.platform);
+}
+
+/**
+ * `null` on the server and during hydration — the server cannot know the keyboard, and guessing would either
+ * mismatch or show Mac users "Ctrl" — then the real modifier once the client has rendered.
+ */
+function useSubmitShortcut(): string | null {
+  return useSyncExternalStore(subscribeNever, platformShortcut, () => null);
+}
 
 /**
  * Step 1 — Describe. One big, quiet writing surface: no visible field chrome, 19px text, and three examples
@@ -23,6 +39,7 @@ export function DescribeForm({ initialText = "" }: { initialText?: string }) {
   const [text, setText] = useState(initialText);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const shortcut = useSubmitShortcut();
 
   const length = text.trim().length;
   const tooShort = length < DESCRIPTION_MIN_CHARS;
@@ -119,7 +136,13 @@ export function DescribeForm({ initialText = "" }: { initialText?: string }) {
 
       {error ? <InlineError>{error}</InlineError> : null}
 
-      <StepBar note={<span className="max-sm:hidden">Scoping takes a few seconds. ⌘ + Enter also works.</span>}>
+      <StepBar
+        note={
+          <span className="max-sm:hidden">
+            Scoping takes a few seconds.{shortcut ? ` ${shortcut} also works.` : null}
+          </span>
+        }
+      >
         <Button type="submit" size="lg" disabled={!canSubmit} className="max-sm:w-full">
           {pending ? "Scoping the job…" : "Continue"}
         </Button>

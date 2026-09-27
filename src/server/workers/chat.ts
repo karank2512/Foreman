@@ -216,7 +216,6 @@ export async function sendMessageToWorker(s: SessionContext, workerId: string, c
     changes: derived.changes,
     perRunBefore: ctx.blueprint.costEstimate.perRunUsd,
     perRunAfter: derived.blueprint.costEstimate.perRunUsd,
-    href,
   });
   const ids = await persistExchange({
     s,

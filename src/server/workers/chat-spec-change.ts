@@ -261,15 +261,32 @@ function hasResidualIntent(instruction: string): boolean {
   return residual.length >= 3;
 }
 
-function appendStandingInstruction(bp: WorkerBlueprint, instruction: string): { blueprint: WorkerBlueprint; agents: string[] } {
+/**
+ * What an agent step does, in the manager's words. Component names ("Researcher", "Queue analyst") are the
+ * design's internal roles; the chat reply says which part of the work changes instead.
+ */
+function stepNoun(bp: WorkerBlueprint, c: AgentComponent): string {
+  if (c.tools.includes("send_notification")) return "delivery";
+  if (c.outputFormat === "json") return c.tools.some((t) => t === "web_search" || t === "fetch_url") ? "research" : "review";
+  return bp.jobFamily === "content" ? "writing" : "analysis";
+}
+
+/** ["research", "analysis"] → "the research and analysis steps". */
+function stepsPhrase(nouns: readonly string[]): string {
+  const unique = [...new Set(nouns)];
+  const listed = unique.length <= 1 ? (unique[0] ?? "") : `${unique.slice(0, -1).join(", ")} and ${unique[unique.length - 1]}`;
+  return `the ${listed} step${unique.length === 1 ? "" : "s"}`;
+}
+
+function appendStandingInstruction(bp: WorkerBlueprint, instruction: string): { blueprint: WorkerBlueprint; steps: string } {
   const line = `${STANDING_PREFIX} ${instruction.trim().replace(/\.?$/, ".")}`;
-  const agents: string[] = [];
+  const nouns: string[] = [];
   const components = bp.components.map((c): BlueprintComponent => {
     if (c.type !== "agent") return c;
-    agents.push(c.name);
+    nouns.push(stepNoun(bp, c));
     return { ...c, instructions: `${c.instructions.trimEnd()}\n\n${line}` };
   });
-  return { blueprint: { ...bp, components }, agents };
+  return { blueprint: { ...bp, components }, steps: stepsPhrase(nouns) };
 }
 
 export function deriveSpecChange(args: { blueprint: WorkerBlueprint; spec: JobSpec; instruction: string }): SpecChangeResult {
@@ -321,7 +338,7 @@ export function deriveSpecChange(args: { blueprint: WorkerBlueprint; spec: JobSp
   if (!structural || hasResidualIntent(instruction) || changes.length === 0) {
     const appended = appendStandingInstruction(bp, instruction);
     bp = appended.blueprint;
-    changes.push(`standing instruction for ${appended.agents.join(" and ")}: “${clip(instruction, 160)}”`);
+    changes.push(`a standing instruction for ${appended.steps}: “${clip(instruction, 160)}”`);
   }
 
   return { blueprint: recostAndValidate(bp), changes };

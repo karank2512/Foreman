@@ -107,45 +107,46 @@ function GrantRow({
   }
 
   return (
-    <Row className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-6">
-      <div className="min-w-0 flex-1">
+    // Stacked on a phone (text, then the control under it); side by side from 640px. The text block takes the
+    // row's full width and wraps — nothing in it is single-line, so no sentence runs past the card edge.
+    <Row className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-6">
+      <div className="w-full min-w-0 flex-1 break-words">
         <RowTitle className={cn(access === "off" && "text-muted-foreground")}>{grant.displayName}</RowTitle>
         {grant.humanDescription ? (
           <p className="text-footnote mt-1 max-w-[60ch] text-pretty text-muted-foreground">{grant.humanDescription}</p>
         ) : null}
-        <RowMeta>
-          {sideEffect ? <span>{sideEffect}</span> : null}
-          {grant.maxCallsPerRun !== null ? (
-            <>
-              {sideEffect ? <Sep /> : null}
-              <span>at most {grant.maxCallsPerRun} calls a run</span>
-            </>
-          ) : null}
-          {grant.reason ? (
-            <>
-              {sideEffect || grant.maxCallsPerRun !== null ? <Sep /> : null}
-              <span className="max-w-[46ch] truncate" title={grant.reason}>
-                {grant.reason}
-              </span>
-            </>
-          ) : !grant.inBlueprint ? (
-            <>
-              {sideEffect ? <Sep /> : null}
-              <span>Not part of the current design</span>
-            </>
-          ) : null}
-        </RowMeta>
+        {/* Why this worker has the tool, in full: it is the one line that is about this job, not the tool. */}
+        {grant.reason ? (
+          <p className="text-footnote mt-1 max-w-[60ch] text-pretty text-muted-foreground">{grant.reason}</p>
+        ) : null}
+        {sideEffect || grant.maxCallsPerRun !== null || (!grant.reason && !grant.inBlueprint) ? (
+          <RowMeta>
+            {sideEffect ? <span>{sideEffect}</span> : null}
+            {grant.maxCallsPerRun !== null ? (
+              <>
+                {sideEffect ? <Sep /> : null}
+                <span>at most {grant.maxCallsPerRun} calls a run</span>
+              </>
+            ) : null}
+            {!grant.reason && !grant.inBlueprint ? (
+              <>
+                {sideEffect || grant.maxCallsPerRun !== null ? <Sep /> : null}
+                <span>Not part of the current design</span>
+              </>
+            ) : null}
+          </RowMeta>
+        ) : null}
       </div>
 
       {readOnly ? (
-        <span className="text-footnote shrink-0 text-muted-foreground">
+        <span className="text-footnote shrink-0 self-start text-muted-foreground sm:self-auto">
           {access === "off" ? "Off" : access === "asks" ? "Asks first" : "Allowed"}
         </span>
       ) : (
         <div
           role="radiogroup"
           aria-label={`What ${workerName} may do with ${grant.displayName}`}
-          className="flex h-8 shrink-0 items-center gap-0.5 rounded-full bg-secondary p-0.5"
+          className="flex h-8 shrink-0 items-center gap-0.5 self-start rounded-full bg-secondary p-0.5 sm:self-auto"
         >
           {OPTIONS.map((option) => {
             const selected = access === option.value;

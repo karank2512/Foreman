@@ -58,6 +58,7 @@ export function ChatPanel({ worker, messages, pendingInstructions, canSend: mayC
   }, [all.length, pending]);
 
   const retired = worker.status === "RETIRED";
+  const simulatedReplies = all.some((m) => m.role !== "USER" && m.simulated);
   const composerDisabled = pending !== null || retired || !mayChat;
   const canSubmit = draft.trim().length > 0 && draft.length <= MESSAGE_MAX_CHARS && !composerDisabled;
 
@@ -183,8 +184,15 @@ export function ChatPanel({ worker, messages, pendingInstructions, canSend: mayC
           </Button>
         </div>
 
+        {/* Said once for the whole conversation, not as a pill on every reply. */}
         <p className="text-caption flex flex-wrap items-center gap-x-2 text-tertiary">
           <span>Enter sends · Shift+Enter adds a line</span>
+          {simulatedReplies ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>Replies come from the simulator</span>
+            </>
+          ) : null}
           {pendingInstructions > 0 ? (
             <>
               <span aria-hidden="true">·</span>

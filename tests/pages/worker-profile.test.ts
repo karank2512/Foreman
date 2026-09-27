@@ -332,7 +332,8 @@ describe("queries/worker-profile", () => {
       expect(collector.tools.every((tool) => tool.label.length > 0 && tool.label !== tool.name)).toBe(true);
       expect(collector.inputKeys).toEqual(["job_brief", "instructions"]);
       expect(collector.outputKey).toBe("records");
-      expect(o.deliverable).toEqual({ titleTemplate: "Weekly AI Infra Funding Report — {{date}}", format: "markdown" });
+      // The overview shows the title the way the next run writes it, never the raw {{date}} placeholder.
+      expect(o.deliverable).toEqual({ titleTemplate: expect.stringMatching(/^Weekly AI Infra Funding Report — \d{4}-\d{2}-\d{2}$/), format: "markdown" });
       expect(o.tools.find((tool) => tool.name === "send_notification")).toMatchObject({ requiresApproval: true });
       expect(o.limits).toEqual(hired.blueprint.limits);
 

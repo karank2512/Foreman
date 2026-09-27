@@ -250,7 +250,7 @@ describe("staffing: report tables and ranking read the way the customer needs", 
     const bp = designBlueprint(spec, draftFromTemplate(spec));
     const rank = bp.components.find((c) => c.id === "rank");
     expect(rank?.type === "deterministic" && rank.operation === "rank" ? rank.config : null).toMatchObject({ by: "sla_hours", direction: "asc" });
-    expect(rank?.description).toMatch(/^Lowest sla hours first/);
+    expect(rank?.description).toMatch(/^Lowest SLA hours first/);
   });
 
   it("does not rank a lead list by an arbitrary number, and keys plan-level pricing rows on competitor + plan", () => {

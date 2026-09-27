@@ -17,6 +17,7 @@ import { llm } from "@/server/models";
 import { enqueueRun } from "@/server/runtime";
 import { assertOrgActive, assertWithinBudget } from "@/server/security";
 import { assertHeadcount } from "@/server/staffing";
+import { fieldList, fieldPhrase } from "@/server/staffing/labels";
 import { activateVersion } from "./activate";
 import { gatherEvidence, type ReplacementEvidence } from "./replace-evidence";
 import { mockReplacementPlan } from "./replace-mock";
@@ -77,7 +78,7 @@ export function applyReplacementPlan(current: WorkerBlueprint, spec: JobSpec, pl
       type: "deterministic",
       id: validateId,
       name: "Validate records",
-      description: `Drop records missing ${required.join(", ")}.`,
+      description: `Drops any record missing ${fieldList(required, "or")}.`,
       operation: "validate_records",
       config: { requiredFields: required, dropInvalid: true },
       inputKeys: [recordsKey],
@@ -87,7 +88,7 @@ export function applyReplacementPlan(current: WorkerBlueprint, spec: JobSpec, pl
       checks.push({
         id: uniqueId("required_fields", new Set(checks.map((c) => c.id))),
         type: "required_fields",
-        description: `Required fields are filled (${required.join(", ")})`,
+        description: `Required fields are filled (${required.map(fieldPhrase).join(", ")})`,
         config: { fields: required, minCompleteness: 0.9 },
         weight: 2,
       });
@@ -102,7 +103,7 @@ export function applyReplacementPlan(current: WorkerBlueprint, spec: JobSpec, pl
       type: "deterministic",
       id: dedupeId,
       name: "Remove duplicates",
-      description: `One record per ${keyFields.join(" + ")}.`,
+      description: `Keeps one record per ${fieldList(keyFields)}.`,
       operation: "dedupe",
       config: { keyFields },
       inputKeys: [recordsKey],
@@ -112,7 +113,7 @@ export function applyReplacementPlan(current: WorkerBlueprint, spec: JobSpec, pl
       checks.push({
         id: uniqueId("no_duplicates", new Set(checks.map((c) => c.id))),
         type: "no_duplicates",
-        description: `No repeated ${keyFields.join(" + ")}`,
+        description: `No repeated ${fieldList(keyFields)}`,
         config: { keyFields },
         weight: 1,
       });

@@ -64,6 +64,34 @@ export function RowMeta({ children, className }: { children: ReactNode; classNam
   );
 }
 
+/**
+ * A wrapping line of facts ("● Active · Hired Sep 1 · Weekly on Monday"). The `·` is drawn before every fact but
+ * the first, so when the line wraps on a phone a separator starts the next row instead of dangling at the end.
+ */
+export function Facts({ children, label, className }: { children: ReactNode; label?: string; className?: string }) {
+  return (
+    <ul
+      aria-label={label}
+      className={cn("text-footnote flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground", className)}
+    >
+      {children}
+    </ul>
+  );
+}
+
+export function Fact({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <li
+      className={cn(
+        "flex min-w-0 items-center gap-x-2 [&:not(:first-child)]:before:text-tertiary [&:not(:first-child)]:before:content-['·'_/_'']",
+        className,
+      )}
+    >
+      {children}
+    </li>
+  );
+}
+
 export function Sep() {
   return (
     <span aria-hidden="true" className="text-tertiary">

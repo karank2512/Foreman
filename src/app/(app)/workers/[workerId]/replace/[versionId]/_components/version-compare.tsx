@@ -5,6 +5,7 @@ import { formatDuration, formatNumber, formatPercent, formatUsd, formatUsdPrecis
 import { SCORE_BAND_CLASSES, scoreBand } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { EstimatedDeltasView, VersionCard } from "@/server/queries/worker-manage";
+import { exampleTitle, formatLabel, operationLabel } from "../../../_components/labels";
 import { TIER_LABELS } from "../../../_tabs/versions-labels";
 import { targetCardHeading } from "./replace-labels";
 
@@ -88,7 +89,7 @@ function stepsOf(card: VersionCard): ReactNode {
           <span className="min-w-0">
             {step.name}
             <span className="text-footnote block text-muted-foreground">
-              {step.tier ? `${TIER_LABELS[step.tier]} model` : step.detail}
+              {step.tier ? `${TIER_LABELS[step.tier]} model` : operationLabel(step.detail.replace(/ /g, "_"))}
             </span>
           </span>
         </li>
@@ -175,10 +176,11 @@ function rowsFor(base: VersionCard | null, target: VersionCard): CompareRow[] {
       </span>
     </>
   );
+  // What the next run would call it, and the kind of file — never the raw `{{date}}` template or enum.
   const deliverable = (c: VersionCard) => (
     <>
-      {c.deliverable.titleTemplate}
-      <span className="text-footnote block text-muted-foreground">{c.deliverable.format.toUpperCase()}</span>
+      {exampleTitle(c.deliverable.titleTemplate)}
+      <span className="text-footnote block text-muted-foreground">{formatLabel(c.deliverable.format)}</span>
     </>
   );
 

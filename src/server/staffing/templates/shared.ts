@@ -2,6 +2,7 @@ import type { AgentDraft, BlueprintDraft, JobSpec, ModelTier } from "@/server/do
 import { JOB_FAMILY_INFO } from "@/server/domain";
 import { tools } from "@/server/tools";
 import { mentionsSending, specText } from "../cues";
+import { fieldList } from "../labels";
 import { pickPersonaName } from "../persona";
 
 /**
@@ -93,18 +94,20 @@ export function persona(ctx: TemplateContext, summary: string): BlueprintDraft["
 
 export const NOTIFY_REASON = "Deliver the finished work to the stakeholders you name. Every send waits for your approval.";
 
-/** Rationale bullets every family shares, phrased the way a staffing manager explains a hire. */
+/**
+ * Rationale bullets every family shares, phrased the way a staffing manager explains a hire: fields by their
+ * labels, fixed steps described by what they guarantee rather than how they are implemented.
+ */
 export function sharedRationale(ctx: TemplateContext, opts: { validate: boolean; dedupe: boolean; keyFields: string[]; rankBy: string }): string[] {
   const out: string[] = [];
   if (opts.validate && ctx.required.length > 0) {
-    out.push(`Records missing ${ctx.required.join(", ")} are dropped by a deterministic validation step — no model call, no cost, no way to slip through.`);
+    out.push(`Any record missing ${fieldList(ctx.required, "or")} is set aside before it reaches you. That check follows a fixed rule, so it costs nothing and nothing slips through.`);
   }
   if (opts.dedupe && opts.keyFields.length > 0) {
-    const what = opts.keyFields.map((k) => k.replace(/_/g, " ")).join(" and ");
-    out.push(`Duplicates are removed on ${opts.keyFields.join(" + ")} before anything reaches you, so the same ${what} never shows up twice.`);
+    out.push(`Duplicates are removed before anything reaches you, so you never see the same ${fieldList(opts.keyFields)} twice.`);
   }
   if (opts.rankBy) {
-    out.push(`Results are ranked by ${opts.rankBy.replace(/_/g, " ")} in code, so the order is consistent from run to run and the most important items come first.`);
+    out.push(`Results are ranked by ${fieldList([opts.rankBy])} the same way every run, so the order is consistent and the most important items come first.`);
   }
   if (ctx.notify) out.push(`${ctx.name} can send the finished work to the people you name, but every send needs your approval first.`);
   return out;

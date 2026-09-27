@@ -29,6 +29,7 @@ import {
 import { notFound } from "@/server/errors";
 import { computeWorkerScore, getWorkerMetrics } from "@/server/evaluation";
 import { llm } from "@/server/models";
+import { renderTitle } from "@/server/runtime";
 import { tools } from "@/server/tools";
 import { getWorkerCostSummary, type WorkerCostSummary } from "@/server/usage";
 import { permissionSubset, WORKER_PERMISSION_KEYS, type WorkerPermissions } from "./permissions";
@@ -56,6 +57,7 @@ async function requireWorker(organizationId: string, workerId: string) {
       id: true,
       name: true,
       jobId: true,
+      job: { select: { title: true } },
       currentVersionId: true,
       currentVersion: { select: { id: true, version: true, changeReason: true, activatedAt: true, blueprint: true } },
     },
@@ -442,6 +444,10 @@ export interface WorkerOverviewView {
   responsibilities: string[];
   jobFamily: string | null;
   pipeline: PipelineStep[];
+  /**
+   * `titleTemplate` is filled in the way the next run fills it ("… — 2026-09-28"): this view only ever shows it in a
+   * sentence, and a raw `{{date}}` placeholder is not something a manager should read.
+   */
   deliverable: { titleTemplate: string; format: DeliverableFormatSlug } | null;
   tools: Array<{ name: string; label: string; reason: string; requiresApproval: boolean }>;
   limits: RunLimits | null;
@@ -505,7 +511,9 @@ export async function getWorkerOverview(organizationId: string, workerId: string
     responsibilities: blueprint?.responsibilities ?? [],
     jobFamily: blueprint?.jobFamily ?? null,
     pipeline: blueprint ? pipelineOf(blueprint) : [],
-    deliverable: blueprint ? { titleTemplate: blueprint.deliverable.titleTemplate, format: blueprint.deliverable.format } : null,
+    deliverable: blueprint
+      ? { titleTemplate: renderTitle(blueprint.deliverable.titleTemplate, { jobTitle: worker.job.title, now: new Date() }), format: blueprint.deliverable.format }
+      : null,
     tools: blueprint?.tools.map((t) => ({ name: t.toolName, label: toolLabel(t.toolName), reason: t.reason, requiresApproval: t.requiresApproval })) ?? [],
     limits: blueprint?.limits ?? null,
     kpis: metrics.kpis,

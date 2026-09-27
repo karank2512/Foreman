@@ -7,11 +7,17 @@ import { Slot } from "radix-ui"
  * Pills. One `default` (blue) button per view; `secondary` gray pills for everything else; `link` — blue text,
  * optionally with a trailing chevron via `data-icon="inline-end"` — for tertiary actions. No shadows, no lift.
  *
- * Touch: under `md` every size below 44px grows an invisible `::before` hit area (vertical for pills and text
- * links, all round for icon buttons) so the drawn pill keeps its size while the tap box meets the 44px minimum.
- * That is why the base is `relative`.
+ * Touch: under `md` every size below 44px grows an invisible `::before` hit area (a 44px band for pills and text
+ * links, a 44px square for icon buttons) so the drawn pill keeps its size while the tap box meets the 44px
+ * minimum. That is why the base is `relative`.
+ *
+ * The box is a fixed 44px centred on the button rather than a negative inset: an absolute `::before` is placed
+ * against the padding box, so an inset sized from the drawn height came up 2px short once the 1px border was
+ * counted (36px pill + 4px + 4px = 42px, measured) and would drift again whenever a size changes.
  */
-const HIT_AREA = "max-md:before:absolute max-md:before:inset-x-0"
+const HIT_AREA = "max-md:before:absolute max-md:before:inset-x-0 max-md:before:top-[calc(50%_-_22px)] max-md:before:h-11"
+const HIT_SQUARE =
+  "max-md:before:absolute max-md:before:top-[calc(50%_-_22px)] max-md:before:left-[calc(50%_-_22px)] max-md:before:size-11"
 
 const buttonVariants = cva(
   "group/button relative inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding font-medium tracking-[-0.01em] whitespace-nowrap transition-[background-color,box-shadow,opacity,color] duration-200 ease-standard outline-none select-none focus-visible:ring-4 focus-visible:ring-primary/30 active:opacity-90 disabled:pointer-events-none disabled:opacity-40 aria-invalid:ring-4 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -28,24 +34,24 @@ const buttonVariants = cva(
         link: "h-auto rounded-sm p-0 text-link hover:underline hover:underline-offset-4 active:opacity-70",
       },
       size: {
-        xs: `h-6 gap-1 px-2.5 text-xs [&_svg:not([class*='size-'])]:size-3 ${HIT_AREA} max-md:before:-inset-y-2.5`,
-        sm: `h-7 gap-1.5 px-3.5 text-[13px] [&_svg:not([class*='size-'])]:size-3.5 ${HIT_AREA} max-md:before:-inset-y-2`,
-        default: `h-9 gap-1.5 px-4 text-sm ${HIT_AREA} max-md:before:-inset-y-1`,
+        xs: `h-6 gap-1 px-2.5 text-xs [&_svg:not([class*='size-'])]:size-3 ${HIT_AREA}`,
+        sm: `h-7 gap-1.5 px-3.5 text-[13px] [&_svg:not([class*='size-'])]:size-3.5 ${HIT_AREA}`,
+        default: `h-9 gap-1.5 px-4 text-sm ${HIT_AREA}`,
         lg: "h-11 gap-2 px-5.5 text-[17px]",
         xl: "h-12 gap-2 px-7 text-[17px]",
-        icon: "size-8 max-md:before:absolute max-md:before:-inset-1.5",
-        "icon-xs": "size-6 max-md:before:absolute max-md:before:-inset-2.5 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 max-md:before:absolute max-md:before:-inset-2 [&_svg:not([class*='size-'])]:size-3.5",
-        "icon-lg": "size-9 max-md:before:absolute max-md:before:-inset-1",
+        icon: `size-8 ${HIT_SQUARE}`,
+        "icon-xs": `size-6 ${HIT_SQUARE} [&_svg:not([class*='size-'])]:size-3`,
+        "icon-sm": `size-7 ${HIT_SQUARE} [&_svg:not([class*='size-'])]:size-3.5`,
+        "icon-lg": `size-9 ${HIT_SQUARE}`,
       },
     },
     compoundVariants: [
-      // A text link has no box, so the size variants' height and padding must not apply to it — and its hit area
-      // is sized for a ~20px line rather than the pill height the size variant assumed.
+      // A text link has no box, so the size variants' height and padding must not apply to it. Its ~20px line
+      // needs the 44px band at every size, including lg/xl whose pill heights would otherwise have covered it.
       {
         variant: "link",
         size: ["xs", "sm", "default", "lg", "xl"],
-        className: `h-auto px-0 ${HIT_AREA} max-md:before:-inset-y-3.5`,
+        className: `h-auto px-0 ${HIT_AREA}`,
       },
     ],
     defaultVariants: {

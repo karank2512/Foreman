@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { RelativeTime } from "@/components/relative-time";
-import { SimulatedBadge } from "@/components/simulated-badge";
 import { WorkerAvatar } from "@/components/worker-avatar";
 import { cn } from "@/lib/utils";
 import type { ChatMessageView } from "@/server/queries/worker-manage";
@@ -90,7 +89,6 @@ function WorkerBubble({ message, worker }: { message: ChatMessageView; worker: {
         <p className="text-caption flex items-center gap-2 text-tertiary">
           <span>{worker.name}</span>
           <RelativeTime iso={message.createdAt} />
-          {message.simulated ? <SimulatedBadge /> : null}
         </p>
       </div>
     </div>

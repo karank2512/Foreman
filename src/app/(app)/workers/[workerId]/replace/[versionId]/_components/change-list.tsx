@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { BlueprintDiffEntry } from "@/server/domain";
+import { humanizeDiffEntry, type ChangeCopyContext } from "./change-copy";
 
 const KIND_LABELS: Record<BlueprintDiffEntry["kind"], string> = {
   added: "Added",
@@ -12,8 +13,18 @@ const KIND_LABELS: Record<BlueprintDiffEntry["kind"], string> = {
 const ROW =
   "relative px-5 py-4 sm:px-6 [&:not(:first-child)]:before:absolute [&:not(:first-child)]:before:inset-x-5 [&:not(:first-child)]:before:top-0 [&:not(:first-child)]:before:h-px [&:not(:first-child)]:before:bg-border sm:[&:not(:first-child)]:before:inset-x-6";
 
-/** The blueprint diff as a readable change list: one row per entry, before → after. */
-export function ChangeList({ entries, baseLabel, targetLabel }: { entries: BlueprintDiffEntry[]; baseLabel: string; targetLabel: string }) {
+/** The blueprint diff as a readable change list: one row per entry, before → after, in a manager's words. */
+export function ChangeList({
+  entries,
+  baseLabel,
+  targetLabel,
+  toolNames = {},
+}: {
+  entries: BlueprintDiffEntry[];
+  baseLabel: string;
+  targetLabel: string;
+  toolNames?: ChangeCopyContext["toolNames"];
+}) {
   if (entries.length === 0) {
     return (
       <Card>
@@ -25,7 +36,7 @@ export function ChangeList({ entries, baseLabel, targetLabel }: { entries: Bluep
   return (
     <Card className="gap-0 py-0">
       <ol className="flex flex-col">
-        {entries.map((entry) => (
+        {entries.map((raw) => humanizeDiffEntry(raw, { toolNames })).map((entry) => (
           <li key={`${entry.kind}:${entry.path}`} className={ROW}>
             <div className="grid gap-x-6 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
               <div className="min-w-0">

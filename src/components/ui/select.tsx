@@ -43,7 +43,9 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-2 rounded-lg border border-input bg-background py-2 pr-3 pl-3.5 text-base whitespace-nowrap transition-[border-color,box-shadow] duration-200 ease-standard outline-none select-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:text-tertiary aria-invalid:border-danger aria-invalid:ring-4 aria-invalid:ring-danger/15 data-placeholder:text-tertiary data-[size=default]:h-11 data-[size=sm]:h-9 sm:text-[15px] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-fit items-center justify-between gap-2 rounded-lg border border-input bg-background py-2 pr-3 pl-3.5 text-base whitespace-nowrap transition-[border-color,box-shadow] duration-200 ease-standard outline-none select-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:text-tertiary aria-invalid:border-danger aria-invalid:ring-4 aria-invalid:ring-danger/15 data-placeholder:text-tertiary data-[size=default]:h-11 data-[size=sm]:h-9 sm:text-[15px] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        // The 36px `sm` trigger keeps its drawn size; under `md` an invisible 44px band (as on Button) is the tap box.
+        "max-md:data-[size=sm]:before:absolute max-md:data-[size=sm]:before:inset-x-0 max-md:data-[size=sm]:before:top-[calc(50%_-_22px)] max-md:data-[size=sm]:before:h-11",
         className
       )}
       {...props}

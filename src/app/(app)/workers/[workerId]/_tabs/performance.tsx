@@ -3,7 +3,6 @@ import { ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { RelativeTime } from "@/components/relative-time";
 import { Section } from "@/components/section";
-import { SimulatedBadge } from "@/components/simulated-badge";
 import { Stat, StatStrip } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -208,7 +207,9 @@ export default async function PerformanceTab({ session, workerId, workerName }: 
 
       <Section
         title="Evaluations"
-        description={`Every check run on ${workerName}'s deliverables, newest first.`}
+        description={`Every check run on ${workerName}'s deliverables, newest first.${
+          data.evaluations.some((e) => e.simulated) ? " The AI judge's scores come from the simulator." : ""
+        }`}
         actions={
           <Button variant="link" asChild>
             <Link href={`/workers/${workerId}?tab=deliverables`}>
@@ -247,7 +248,6 @@ export default async function PerformanceTab({ session, workerId, workerName }: 
                       <span className={e.passed ? "text-success" : "text-danger"}>{e.passed ? "Passed" : "Did not pass"}</span>
                       <Sep />
                       <RelativeTime iso={e.createdAt} />
-                      {e.simulated ? <SimulatedBadge /> : null}
                     </RowMeta>
                   </div>
                   <span className={cn("metric shrink-0 text-[17px] font-semibold", evalBand.text)}>{pct}</span>

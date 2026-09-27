@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDuration, formatUsd } from "@/lib/format";
 import { isAppError } from "@/server/errors";
 import { getWorkerPermissions, type WorkerPermissionsView } from "@/server/queries/worker-manage";
+import { timeZoneLabel } from "../_components/labels";
 import { Row, RowList, RowTitle } from "../_components/rows";
 import { PermissionsGrantsTable } from "./permissions-grants-table";
 import { PermissionsScheduleEditor } from "./permissions-schedule-editor";
@@ -69,7 +70,11 @@ export default async function PermissionsTab({ session, workerId, workerName }: 
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section className="flex flex-col" title="Schedule" description="When the next run starts. Times are the server's local time.">
+        <Section
+          className="flex flex-col"
+          title="Schedule"
+          description={`When the next run starts. Times are in ${timeZoneLabel()}.`}
+        >
           <Card className="flex-1">
             <CardContent>
               <PermissionsScheduleEditor

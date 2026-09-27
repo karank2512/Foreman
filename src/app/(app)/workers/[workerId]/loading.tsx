@@ -39,10 +39,10 @@ export default function WorkerProfileLoading() {
         <Skeleton className="h-3.5 w-28 rounded-sm" />
       </div>
 
-      {/* The section bar, full-bleed like the real LocalNav. */}
-      <div className="ml-[calc(50%-50vw)] flex h-(--localnav-height) w-dvw items-center justify-end gap-5 bg-canvas-raised px-4 sm:px-6">
-        {["w-16", "w-14", "w-20", "w-22", "w-10", "w-19", "w-17"].map((w) => (
-          <Skeleton key={w} className={`h-3.5 rounded-sm ${w}`} />
+      {/* The section bar, full-bleed like the real LocalNav: five tabs and "More" (a phone scrolls all nine). */}
+      <div className="ml-[calc(50%-50vw)] flex h-(--localnav-height) w-dvw items-center justify-end gap-5 overflow-hidden bg-canvas-raised px-4 sm:px-6">
+        {["w-16", "w-14", "w-20", "w-22", "w-24", "w-11"].map((w) => (
+          <Skeleton key={w} className={`h-3.5 shrink-0 rounded-sm ${w}`} />
         ))}
       </div>
 

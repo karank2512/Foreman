@@ -15,6 +15,7 @@ import { tools } from "@/server/tools";
 import { estimateCost } from "./cost";
 import { extractEmails, looksNumeric, specText } from "./cues";
 import { deriveEvaluationPlan, deriveKpis, maxCostPerRun, requiredFieldNames, usableKeyFields } from "./kpis";
+import { fieldList, fieldPhrase } from "./labels";
 import { feedbackTablePlan, type FeedbackTablePlan } from "./notable-feedback";
 import { buildPersona } from "./persona";
 
@@ -202,7 +203,7 @@ export function designBlueprint(spec: JobSpec, draft: BlueprintDraft, opts: { us
       type: "deterministic",
       id: "validate_records",
       name: "Validate records",
-      description: `Drop records missing ${required.join(", ")}.`,
+      description: `Drops any record missing ${fieldList(required, "or")}.`,
       operation: "validate_records",
       config: { requiredFields: required, dropInvalid: true },
       inputKeys: ["records"],
@@ -214,7 +215,7 @@ export function designBlueprint(spec: JobSpec, draft: BlueprintDraft, opts: { us
       type: "deterministic",
       id: "dedupe",
       name: "Remove duplicates",
-      description: `One record per ${keyFields.join(" + ")}.`,
+      description: `Keeps one record per ${fieldList(keyFields)}.`,
       operation: "dedupe",
       config: { keyFields },
       inputKeys: ["records"],
@@ -225,8 +226,8 @@ export function designBlueprint(spec: JobSpec, draft: BlueprintDraft, opts: { us
     components.push({
       type: "deterministic",
       id: "rank",
-      name: `Rank by ${rankBy.replace(/_/g, " ")}`,
-      description: `${draft.rankDirection === "desc" ? "Highest" : "Lowest"} ${rankBy.replace(/_/g, " ")} first${target ? `, keeping the top ${Math.round(target * RANK_LIMIT_FACTOR)}` : ""}.`,
+      name: `Rank by ${fieldPhrase(rankBy)}`,
+      description: `${draft.rankDirection === "desc" ? "Highest" : "Lowest"} ${fieldPhrase(rankBy)} first${target ? `, keeping the top ${Math.round(target * RANK_LIMIT_FACTOR)}` : ""}.`,
       operation: "rank",
       config: { by: rankBy, direction: draft.rankDirection, ...(target ? { limit: Math.round(target * RANK_LIMIT_FACTOR) } : {}) },
       inputKeys: ["records"],
@@ -234,13 +235,14 @@ export function designBlueprint(spec: JobSpec, draft: BlueprintDraft, opts: { us
     });
   }
   if (hasStats && groupBy) {
+    const numericFields = fields.filter((f) => f !== groupBy && looksNumeric(f));
     components.push({
       type: "deterministic",
       id: "compute_stats",
-      name: `Break down by ${groupBy.replace(/_/g, " ")}`,
-      description: `Counts per ${groupBy.replace(/_/g, " ")} plus numeric summaries.`,
+      name: `Break down by ${fieldPhrase(groupBy)}`,
+      description: `Counts per ${fieldPhrase(groupBy)}${numericFields.length > 0 ? `, with totals and averages for ${fieldList(numericFields)}` : ""}.`,
       operation: "compute_stats",
-      config: { groupBy, numericFields: fields.filter((f) => f !== groupBy && looksNumeric(f)) },
+      config: { groupBy, numericFields },
       inputKeys: ["records"],
       outputKey: "stats",
     });

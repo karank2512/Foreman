@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { formatDate, formatNumber, formatPercent, formatTokens, formatUsd } from "@/lib/format";
 import { requireSession } from "@/server/auth";
 import { getUsagePage, parseUsageRange } from "@/server/queries/usage";
+import { chartDays } from "./_lib/chart-days";
 import { spendTrend, type SpendTrend } from "./_lib/trend";
 import { RangePicker } from "./_components/range-picker";
 import { UsageChart } from "./_components/usage-chart";
@@ -110,8 +111,9 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
               title="Day by day"
               description="Model time stacked on tool fees, one bar per day. Hover a day for the split."
             >
-              <Card>
-                <UsageChart byDay={usage.byDay} />
+              {/* Card pads only top and bottom; without the side inset the legend and grid run into its edges. */}
+              <Card className="px-(--card-spacing)">
+                <UsageChart byDay={chartDays(usage.byDay)} />
               </Card>
             </Section>
 

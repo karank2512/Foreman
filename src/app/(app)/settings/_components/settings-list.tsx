@@ -97,7 +97,9 @@ export function Mono({ children }: { children: ReactNode }) {
  */
 export function OperatorNotes({ children }: { children: ReactNode }) {
   return (
-    <details className="group/operator px-1">
+    // `open` belongs to the browser: a click before hydration (seconds on a slow load) adds it to the server
+    // markup, which React would otherwise report as a mismatch.
+    <details className="group/operator px-1" suppressHydrationWarning>
       <summary className="w-fit cursor-pointer list-none rounded-sm text-footnote font-medium text-link outline-none select-none hover:underline [&::-webkit-details-marker]:hidden">
         <span className="group-open/operator:hidden">For operators ›</span>
         <span className="hidden group-open/operator:inline">Hide operator notes</span>

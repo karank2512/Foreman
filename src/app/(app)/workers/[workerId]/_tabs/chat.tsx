@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { isAppError } from "@/server/errors";
-import { getWorkerChat, type WorkerChatView } from "@/server/queries/worker-manage";
+import type { WorkerChatView } from "@/server/queries/worker-manage";
+import { loadWorkerChat } from "./chat-data";
 import { ChatPanel } from "./chat-panel";
 import type { WorkerTabProps } from "./types";
 
@@ -11,7 +12,7 @@ import type { WorkerTabProps } from "./types";
 export default async function ChatTab({ session, workerId }: WorkerTabProps) {
   let data: WorkerChatView;
   try {
-    data = await getWorkerChat(session.organizationId, workerId, { role: session.role });
+    data = await loadWorkerChat(session.organizationId, workerId, session.role);
   } catch (e) {
     if (isAppError(e) && e.code === "NOT_FOUND") notFound();
     throw e;

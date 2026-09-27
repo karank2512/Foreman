@@ -49,6 +49,9 @@ const REVIEW_BASE_OUTPUT_TOKENS = 150;
 const REVIEW_OUTPUT_TOKENS_PER_CRITERION = 40;
 
 const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
+/** "Web search" → "web search" mid-sentence; an acronym ("CSV export") keeps its capitals. */
+const lowerFirstWord = (s: string) => (/^[A-Z0-9]{2,}\b/.test(s) ? s : `${s.charAt(0).toLowerCase()}${s.slice(1)}`);
+const listOf = (items: readonly string[]) => (items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
 /** Expected model turns: one to plan, one to answer, and about 1.5 per tool (call + read), capped by maxTurns. */
 export function estimateTurns(agent: Pick<AgentComponent, "maxTurns" | "tools">): number {
@@ -116,17 +119,19 @@ export function estimateCost(blueprint: Omit<WorkerBlueprint, "costEstimate">): 
   const deterministic = blueprint.components.length - agents.length;
   const toolCalls = breakdown.reduce((sum, item) => sum + item.estToolCalls, 0);
 
+  // These lines are printed on the proposal, so tools go by their display names ("Web search", not web_search).
   const assumptions: string[] = agents.map((agent) => {
     const turns = estimateTurns(agent);
-    const tools = agent.tools.length > 0 ? ` using ${agent.tools.join(", ")}` : " with no tools";
-    return `${agent.name}: about ${turns} model turns on the ${agent.modelTier} tier${tools}.`;
+    const names = agent.tools.map((name) => lowerFirstWord(tools.get(name)?.displayName ?? name));
+    const using = names.length > 0 ? ` using ${listOf(names)}` : " with no tools";
+    return `${agent.name}: about ${turns} model turns on the ${agent.modelTier} model${using}.`;
   });
   assumptions.push(
-    `Roughly ${INPUT_TOKENS_PER_TURN.toLocaleString("en-US")} input and ${OUTPUT_TOKENS_PER_TURN_MARKDOWN}–${OUTPUT_TOKENS_PER_TURN_JSON} output tokens per model turn, priced at each tier's current model.`,
+    `Roughly ${INPUT_TOKENS_PER_TURN.toLocaleString("en-US")} input and ${OUTPUT_TOKENS_PER_TURN_MARKDOWN}–${OUTPUT_TOKENS_PER_TURN_JSON} output tokens per model turn, priced at each model's current rates.`,
   );
   if (toolCalls > 0) assumptions.push(`About ${Math.round(toolCalls)} tool calls per run at the platform's per-call fees.`);
-  if (deterministic > 0) assumptions.push(`${deterministic} deterministic step${deterministic === 1 ? "" : "s"} (validation, ranking, formatting) run for free.`);
-  assumptions.push("Includes the quality review of each deliverable: one standard-tier call that is billed to the run.");
+  if (deterministic > 0) assumptions.push(`${deterministic} fixed step${deterministic === 1 ? "" : "s"} (checks, ranking, formatting) cost nothing.`);
+  assumptions.push("Includes the quality review of each deliverable: one standard-model call that is billed to the run.");
   assumptions.push(`${describeCadence(blueprint.schedule)} → about ${perMonth} runs per month.`);
 
   return {

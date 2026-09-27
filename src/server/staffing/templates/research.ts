@@ -12,14 +12,24 @@ const WEB_METHOD = [
 
 export function marketResearchTemplate(ctx: TemplateContext): BlueprintDraft {
   const { spec } = ctx;
-  const keyField = ctx.pick("company", "company_name", "startup", "name", "title");
+  const keyField = ctx.pick("company", "competitor", "company_name", "startup", "name", "title");
   const rankBy = ctx.pick("amount_usd", "amount", "round_size", "funding_amount", "raised_usd") || ctx.numeric();
   const groupBy = ctx.pick("category", "sector", "segment", "stage", "industry");
-  const keyFields = keyField ? [keyField] : [];
+  // A competitor digest has several updates per competitor, so a row is one competitor × one update.
+  const update = keyField === "competitor" ? ctx.pick("summary", "update", "headline") : "";
+  const keyFields = [keyField, update].filter((k) => k !== "");
+  const digest = update !== "";
+  const conventions = [
+    ctx.pick("amount_usd", "amount", "round_size", "funding_amount", "raised_usd") ? 'amounts are numbers in USD (convert "$40M" to 40000000)' : "",
+    ctx.has("stage") ? "stages use the standard labels (Pre-seed, Seed, Series A…)" : "",
+    "dates are ISO (YYYY-MM-DD)",
+  ].filter((c) => c !== "");
 
   const collector = agentDraft({
     name: "Researcher",
-    description: "Finds and structures recent market activity — companies, funding rounds, launches — from public sources.",
+    description: digest
+      ? "Finds what each competitor shipped — features, launches, integrations — on their own pages and in the press."
+      : "Finds and structures recent market activity — companies, funding rounds, launches — from public sources.",
     goal: `Collect a complete, sourced set of records for the ${spec.deliverable.title}.`,
     modelTier: "standard",
     tools: WEB_TOOLS,
@@ -27,9 +37,11 @@ export function marketResearchTemplate(ctx: TemplateContext): BlueprintDraft {
       `You are a meticulous market researcher working for a client. ${jobFacts(spec)}`,
       WEB_METHOD,
       fieldGuide(spec),
-      `Quality bar: every record names its source URL; amounts are numbers in USD (convert "$40M" to 40000000); stages use the standard labels (Pre-seed, Seed, Series A…); dates are ISO (YYYY-MM-DD). ${NO_INVENTION}`,
+      `Quality bar: every record names its source URL; ${conventions.join("; ")}. ${NO_INVENTION}`,
       volumeLine(spec, "records"),
-      "Avoid: press-release fluff, companies that merely mention the topic, and anything outside the job's timeframe or constraints. One record per company per event — if the same round is reported twice, keep the better-sourced version.",
+      digest
+        ? "Avoid: marketing fluff, rumours and roadmap teasers, and anything shipped outside the job's timeframe. One record per competitor per change — if the same release is covered twice, keep the competitor's own announcement."
+        : "Avoid: press-release fluff, companies that merely mention the topic, and anything outside the job's timeframe or constraints. One record per company per event — if the same round is reported twice, keep the better-sourced version.",
     ],
   });
 
@@ -48,7 +60,12 @@ export function marketResearchTemplate(ctx: TemplateContext): BlueprintDraft {
   });
 
   return {
-    persona: persona(ctx, `${ctx.name} tracks the market for you every ${spec.cadence.kind === "daily" ? "day" : "week"}: searches, verifies, structures what was found, and writes the briefing a good analyst would. Every record cites its source.`),
+    persona: persona(
+      ctx,
+      digest
+        ? `${ctx.name} watches your competitors for you: reads their changelogs, blogs and announcements, notes what shipped and writes up what it means for you. Every update links to where it was announced.`
+        : `${ctx.name} tracks the market for you every ${spec.cadence.kind === "daily" ? "day" : "week"}: searches, verifies, structures what was found, and writes the briefing a good analyst would. Every record cites its source.`,
+    ),
     responsibilities: spec.responsibilities.slice(0, 8),
     collector,
     analyst,
@@ -64,10 +81,10 @@ export function marketResearchTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Web research is the core skill here, so the collector runs on the standard tier: in trials the cheaper fast tier drops fields and repeats sources, which is exactly what a research report cannot afford.",
+      "Web research is the core skill here, so the researcher works on the standard model: the cheaper fast model tends to drop fields and repeat sources, which is exactly what a research report cannot afford.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       spec.deliverable.format === "markdown"
-        ? "A separate analyst writes the narrative from the cleaned records, and the report is compiled in code so every issue has the same structure."
+        ? "A separate analyst writes the summary from the cleaned records, and the report is assembled the same way every run, so every issue has the same structure."
         : `The deliverable is a ${spec.deliverable.format.toUpperCase()} of the cleaned records, ready to import.`,
     ],
   };
@@ -131,7 +148,7 @@ export function marketAnalysisTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Analysis is where judgment matters, so the analyst runs on the reasoning tier while the fact-gathering collector stays on the cheaper standard tier — you pay for thinking only where it changes the answer.",
+      "Analysis is where judgment matters, so the analyst works on the reasoning model while the researcher gathering the facts stays on the cheaper standard model — you pay for thinking only where it changes the answer.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       "Conversions and comparisons go through the calculator, so the numbers in the recommendations are arithmetic, not intuition.",
     ],
@@ -193,7 +210,7 @@ export function leadResearchTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Lead quality depends on confirming fit on primary sources, so the collector runs on the standard tier and is told to leave unknown contact details empty rather than guess.",
+      "Lead quality depends on confirming fit on primary sources, so the researcher works on the standard model and is told to leave unknown contact details empty rather than guess.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       spec.deliverable.format === "csv"
         ? "The list is delivered as CSV so it drops straight into your CRM or a spreadsheet."

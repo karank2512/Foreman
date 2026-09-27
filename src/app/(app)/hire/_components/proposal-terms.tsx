@@ -1,7 +1,7 @@
 import type { WorkerProposal } from "@/server/domain";
 import { computeNextRunAt, describeCadence } from "@/server/domain";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDateTime, formatDuration, formatNumber, formatPercent, formatTokens, formatUsd, formatUsdPrecise } from "@/lib/format";
+import { formatDateTime, formatDuration, formatNumber, formatTokens, formatUsd, formatUsdPrecise } from "@/lib/format";
 import { CONFIDENCE_LABELS, MODEL_TIER_LABELS, formatKpiTarget } from "../schema";
 
 /** What the worker is measured on, run after run: one row each, target right-aligned in tabular figures. */
@@ -19,44 +19,6 @@ export function ProposalKpis({ proposal }: { proposal: WorkerProposal }) {
             <p className="metric shrink-0 font-medium">{formatKpiTarget(kpi)}</p>
           </div>
         ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-/** How every run gets scored, said once in a sentence — the weights matter less than the fact that it happens. */
-export function ProposalJudging({ proposal }: { proposal: WorkerProposal }) {
-  const { evaluation } = proposal.blueprint;
-  return (
-    <Card>
-      <CardContent className="space-y-5">
-        <p className="text-pretty">
-          Every run is scored three ways — automatic checks, an AI reviewer and your own feedback — and passes at{" "}
-          <span className="metric font-medium">{formatPercent(evaluation.passThreshold)}</span>.
-        </p>
-        <div className="space-y-2.5">
-          <p className="text-footnote font-medium text-muted-foreground">The reviewer looks for</p>
-          <ul className="space-y-2">
-            {evaluation.rubric.map((criterion) => (
-              <li key={criterion.id}>
-                <span className="font-medium">{criterion.criterion}</span>
-                <span className="text-muted-foreground"> — {criterion.description}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {evaluation.deterministicChecks.length > 0 ? (
-          <div className="space-y-2.5">
-            <p className="text-footnote font-medium text-muted-foreground">Checked automatically</p>
-            <ul className="space-y-2">
-              {evaluation.deterministicChecks.map((check) => (
-                <li key={check.id} className="text-pretty text-muted-foreground">
-                  {check.description}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );

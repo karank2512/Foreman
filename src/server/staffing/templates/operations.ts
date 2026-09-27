@@ -1,4 +1,5 @@
 import type { BlueprintDraft } from "@/server/domain";
+import { fieldList } from "../labels";
 import { agentDraft, fieldGuide, jobFacts, NO_INVENTION, NOTIFY_REASON, persona, reason, sharedRationale, volumeLine, type TemplateContext } from "./shared";
 
 /** Operations families that work from the workspace's own records: feedback_analysis, support_triage, finance_ops. */
@@ -55,10 +56,10 @@ export function feedbackAnalysisTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Categorization is a judgment task, so it runs on the standard tier: consistent labels are what make the counts trustworthy week over week.",
+      "Categorization is a judgment task, so it runs on the standard model: consistent labels are what make the counts trustworthy week over week.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       groupBy
-        ? `Counts by ${groupBy.replace(/_/g, " ")} are computed in code, so the numbers in the report are exact and the analyst only interprets them.`
+        ? `Counts by ${fieldList([groupBy])} are calculated by a fixed step rather than estimated, so the numbers in the report are exact and the analyst only interprets them.`
         : "The analyst works from the cleaned records so the narrative always matches the data.",
     ],
   };
@@ -117,7 +118,7 @@ export function supportTriageTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Triage decisions have to be consistent to be useful, so the specialist runs on the standard tier and follows explicit priority and routing rules written into its instructions.",
+      "Triage decisions have to be consistent to be useful, so the specialist works on the standard model and follows explicit priority and routing rules written into its instructions.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       spec.deliverable.format === "csv"
         ? "The triaged queue is delivered as CSV, ready to bulk-update your helpdesk or share with team leads."
@@ -180,7 +181,7 @@ export function financeOpsTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "Financial records need consistency more than creativity, so the associate runs on the standard tier with explicit categorization and exception rules, and does every calculation through the calculator.",
+      "Financial records need consistency more than creativity, so the associate works on the standard model with explicit categorization and exception rules, and does every calculation through the calculator.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
       "Exceptions are flagged for a human rather than auto-corrected, which keeps the worker useful without letting it change your books.",
     ],

@@ -10,6 +10,7 @@ import {
   type RubricCriterion,
 } from "@/server/domain";
 import { config } from "@/server/config";
+import { fieldList, fieldPhrase } from "./labels";
 import { toSnakeCase } from "./cues";
 
 /**
@@ -217,7 +218,7 @@ export function deriveEvaluationPlan(spec: JobSpec, draft: Pick<BlueprintDraft, 
     checks.push({
       id: "required_fields",
       type: "required_fields",
-      description: `Required fields are filled (${required.join(", ")})`,
+      description: `Required fields are filled (${required.map(fieldPhrase).join(", ")})`,
       config: { fields: required, minCompleteness: 0.9 },
       weight: 2,
     });
@@ -226,7 +227,7 @@ export function deriveEvaluationPlan(spec: JobSpec, draft: Pick<BlueprintDraft, 
     checks.push({
       id: "no_duplicates",
       type: "no_duplicates",
-      description: `No repeated ${keyFields.join(" + ")}`,
+      description: `No repeated ${fieldList(keyFields)}`,
       config: { keyFields },
       weight: 1,
     });

@@ -60,7 +60,7 @@ export function contentTemplate(ctx: TemplateContext): BlueprintDraft {
     rationale: [
       "Good writing starts with good sources, so a researcher gathers and structures the material before a separate writer drafts — the writer never has to invent facts.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy: "" }),
-      "Both agents run on the standard tier: drafts need judgment about tone and structure that the fast tier does not deliver reliably.",
+      "The researcher and the writer both work on the standard model: drafts need judgment about tone and structure that the fast model does not deliver reliably.",
     ],
   };
 }
@@ -120,9 +120,9 @@ export function generalTemplate(ctx: TemplateContext): BlueprintDraft {
       reason("send_notification", NOTIFY_REASON),
     ],
     rationale: [
-      "The brief does not map to a specialised template, so the associate gets the full research toolkit and runs on the standard tier, with instructions to work in small verified steps.",
+      "This job does not match one of our specialist designs, so the associate gets the full research toolkit and works on the standard model, with instructions to work in small verified steps.",
       ...sharedRationale(ctx, { validate: true, dedupe: keyFields.length > 0, keyFields, rankBy }),
-      "As the job settles, replace this worker with a more specialised design — the platform learns which steps can move into code.",
+      "As the job settles, replace this worker with a more specialised design: once the work is predictable, more of it can become fixed steps that cost nothing.",
     ],
   };
 }

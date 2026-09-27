@@ -175,6 +175,26 @@ describe("workforce › worker card status line and facts (design-core-011)", ()
     const html = render(h(workerCard.WorkerCard, { worker: samCard, canRun: true }));
     expect(html).toMatch(/data-slot="card-footer" class="[^"]*mt-auto/);
   });
+
+  it("renders every status line as the same footnote-sized flex row, so the facts start level across cards", () => {
+    const healthy = { ...samCard, health: "HEALTHY" as const, healthReason: null };
+    const variants: Record<string, WorkerCardView> = {
+      "needs attention": samCard,
+      working: { ...healthy, activeRun: { id: "run_live", status: "WAITING_FOR_APPROVAL" } },
+      "on the job": healthy,
+    };
+    for (const [label, worker] of Object.entries(variants)) {
+      const html = render(h(workerCard.WorkerCard, { worker, canRun: true }));
+      // The element that directly holds the badge. A bare badge sits in CardContent's anonymous line box (sized
+      // by body text), and a bare inline <a> ignores CardContent's spacing margin — both shift the grid below.
+      const holder = html.match(/<(\w+) class="([^"]*)"[^>]*><span data-slot="status-badge"/);
+      expect(holder, `${label}: the badge has its own row`).not.toBeNull();
+      const classes = holder![2]!.split(" ");
+      expect(classes, `${label}: ${holder![2]}`).toEqual(expect.arrayContaining(["flex", "text-footnote"]));
+    }
+    const working = render(h(workerCard.WorkerCard, { worker: variants.working!, canRun: true }));
+    expect(working).toMatch(/<a class="[^"]*\bflex\b[^"]*" title="Open the run" href="\/runs\/run_live">/);
+  });
 });
 
 describe("workforce › the stat strip says Simulated nowhere (design-core-013)", () => {

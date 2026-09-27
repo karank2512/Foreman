@@ -3,9 +3,12 @@ import { Section } from "@/components/section";
 import { Stat, StatStrip } from "@/components/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumber, formatPercent, formatUsd, formatUsdPrecise, pluralize } from "@/lib/format";
+import { llm } from "@/server/models";
+import type { ModelTier } from "@/server/domain";
 import { getWorkerCost } from "@/server/queries/worker-profile";
 import { Row, RowList, RowMeta, RowTitle, Sep } from "../_components/rows";
 import { CostChart } from "./cost-chart";
+import { modelRowLabel } from "./cost-labels";
 import type { WorkerTabProps } from "./types";
 
 export default async function CostTab({ session, workerId, workerName }: WorkerTabProps) {
@@ -18,6 +21,11 @@ export default async function CostTab({ session, workerId, workerName }: WorkerT
   const modelShare = billable > 0 ? cost.modelCostUsd / billable : null;
   const everythingSimulated = cost.simulated || cost.simulatedShare === 1;
   const someSimulated = cost.simulatedShare !== null && cost.simulatedShare > 0;
+  // The ledger keeps the model id; a manager thinks in tiers. Map ids back through today's routing.
+  const routes = (["fast", "standard", "reasoning"] as const satisfies readonly ModelTier[]).map((tier) => ({
+    tier,
+    model: llm.route(tier).model,
+  }));
 
   return (
     <>
@@ -103,25 +111,29 @@ export default async function CostTab({ session, workerId, workerName }: WorkerT
             </Card>
           ) : (
             <RowList className="flex-1">
-              {cost.byResource.map((r) => (
-                <Row key={`${r.kind}:${r.resource}`} className="items-center">
-                  <div className="min-w-0 flex-1">
-                    <RowTitle>{r.label}</RowTitle>
-                    <RowMeta>
-                      <span>{r.kind === "MODEL" ? "Model" : "Tool"}</span>
-                      <Sep />
-                      <span>{formatNumber(r.calls, 0)} calls</span>
-                      {cost.totalCostUsd > 0 ? (
-                        <>
-                          <Sep />
-                          <span>{formatPercent(r.costUsd / cost.totalCostUsd)} of spend</span>
-                        </>
-                      ) : null}
-                    </RowMeta>
-                  </div>
-                  <span className="metric shrink-0 text-[15px] font-medium">{formatUsdPrecise(r.costUsd)}</span>
-                </Row>
-              ))}
+              {cost.byResource.map((r) => {
+                const model = r.kind === "MODEL" ? modelRowLabel(r.resource, routes) : null;
+                return (
+                  <Row key={`${r.kind}:${r.resource}`} className="items-center">
+                    <div className="min-w-0 flex-1">
+                      <RowTitle>{model ? model.title : r.label}</RowTitle>
+                      <RowMeta>
+                        {/* A live model's id is worth a glance (which one is billing); a simulator id is noise. */}
+                        <span>{model ? (model.detail ?? "Model") : "Tool"}</span>
+                        <Sep />
+                        <span>{formatNumber(r.calls, 0)} calls</span>
+                        {cost.totalCostUsd > 0 ? (
+                          <>
+                            <Sep />
+                            <span>{formatPercent(r.costUsd / cost.totalCostUsd)} of spend</span>
+                          </>
+                        ) : null}
+                      </RowMeta>
+                    </div>
+                    <span className="metric shrink-0 text-[15px] font-medium">{formatUsdPrecise(r.costUsd)}</span>
+                  </Row>
+                );
+              })}
             </RowList>
           )}
         </Section>

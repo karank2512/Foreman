@@ -7,11 +7,11 @@ import { Stat, StatStrip } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatPercent, formatUsd, formatUsdPrecise, pluralize } from "@/lib/format";
+import { formatPercent, formatUsd, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getWorkerOverview, type ActiveVersionRef, type PipelineStep, type WorkerReviewRow } from "@/server/queries/worker-profile";
 import { formatKpiValue, kpiVerdict } from "../_components/kpi-format";
-import { beforeChangeLabel, operationLabel, RECOMMENDATION_META } from "../_components/labels";
+import { beforeChangeLabel, exampleTitle, operationLabel, reviewVerdict } from "../_components/labels";
 import { Row, RowList, RowMeta, RowTitle, Sep } from "../_components/rows";
 import { RunsTable } from "../_components/runs-table";
 import { TierChip } from "../_components/tier-chip";
@@ -24,6 +24,9 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
   const href = (tab: string) => `/workers/${workerId}?tab=${tab}`;
   const successRate = metrics.runs > 0 ? metrics.succeeded / metrics.runs : null;
   const reviewed = metrics.accepted + metrics.rejected;
+  // The job usually sets its own cost target; the plan then rides on that row instead of a second "Cost per run".
+  const planned = data.cost.estimatedPerRunUsd;
+  const hasCostKpi = data.kpis.some((k) => k.metric === COST_METRIC);
 
   return (
     <>
@@ -56,7 +59,7 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
         <Stat
           label="Spend so far"
           value={formatUsd(metrics.totalCostUsd)}
-          hint={`${formatUsdPrecise(metrics.avgCostPerRunUsd)} a run`}
+          hint={metrics.runs > 0 ? `across ${pluralize(metrics.runs, "run")}` : "Nothing spent yet"}
         />
       </StatStrip>
 
@@ -82,8 +85,8 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
 
       <Section
         title={`How ${workerName} works`}
-        description={`Every run goes through these steps in order. ${
-          data.deliverable ? `It ends with “${data.deliverable.titleTemplate}”.` : ""
+        description={`Every run goes through these steps in order.${
+          data.deliverable ? ` It ends with “${exampleTitle(data.deliverable.titleTemplate)}”.` : ""
         }`}
         actions={
           <Button variant="link" asChild>
@@ -154,6 +157,14 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
                           >
                             {verdict === "met" ? "On target" : verdict === "missed" ? "Behind" : "Not enough data"}
                           </span>
+                          {kpi.metric === COST_METRIC && planned !== null ? (
+                            <>
+                              <Sep />
+                              <span>
+                                planned <span className="metric">{formatKpiValue(COST_METRIC, planned)}</span>
+                              </span>
+                            </>
+                          ) : null}
                         </RowMeta>
                       </div>
                       <span className="metric shrink-0 text-[17px] font-semibold">
@@ -162,20 +173,20 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
                     </Row>
                   );
                 })}
-                {data.cost.estimatedPerRunUsd !== null ? (
+                {planned !== null && !hasCostKpi ? (
                   <Row className="items-center">
                     <div className="min-w-0 flex-1">
                       <RowTitle>Cost per run</RowTitle>
                       <RowMeta>
                         <span>
-                          Planned <span className="metric">{formatUsdPrecise(data.cost.estimatedPerRunUsd)}</span>
+                          Planned <span className="metric">{formatKpiValue(COST_METRIC, planned)}</span>
                         </span>
                         <Sep />
-                        <span>{costVerdict(data.cost.estimatedPerRunUsd, data.cost.actualAvgPerRunUsd)}</span>
+                        <span>{costVerdict(planned, data.cost.actualAvgPerRunUsd)}</span>
                       </RowMeta>
                     </div>
                     <span className="metric shrink-0 text-[17px] font-semibold">
-                      {formatUsdPrecise(data.cost.actualAvgPerRunUsd)}
+                      {formatKpiValue(COST_METRIC, data.cost.actualAvgPerRunUsd)}
                     </span>
                   </Row>
                 ) : null}
@@ -264,6 +275,9 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
   );
 }
 
+/** The KPI metric a job uses for its cost target (see `KPI_METRICS` in the domain). */
+const COST_METRIC = "cost_per_run_usd";
+
 function toolSentence(workerName: string, tools: Array<{ label: string; requiresApproval: boolean }>): string {
   const open = tools.filter((t) => !t.requiresApproval).map((t) => t.label);
   const gated = tools.filter((t) => t.requiresApproval).map((t) => t.label);
@@ -305,25 +319,19 @@ function PipelineRow({ step, index }: { step: PipelineStep; index: number }) {
   );
 }
 
-/** The one actionable line from a review of the version running today. */
+/**
+ * The verdict of a review of the version running today, as one quiet line. The header already carries the one
+ * tinted "needs you" panel (health, or the drafted replacement), so this neither repeats it in a second panel
+ * nor quotes the review's reasoning — that, with its score from the day it was written, lives on Performance.
+ */
 function ReviewNote({ workerId, workerName, review }: { workerId: string; workerName: string; review: WorkerReviewRow }) {
-  const meta = RECOMMENDATION_META[review.recommendation];
   return (
-    <div className="flex flex-col gap-2 rounded-[14px] bg-warning-soft px-4 py-3.5 text-[15px] text-pretty sm:flex-row sm:items-center sm:gap-6">
-      <p className="min-w-0 flex-1">
-        <span className="font-medium">Latest review: {meta.headline(workerName)}.</span> {review.recommendationDetail}
-      </p>
-      <Link
-        href={
-          review.recommendation === "REPLACE"
-            ? `/workers/${workerId}?tab=versions`
-            : `/workers/${workerId}?tab=chat`
-        }
-        className="shrink-0 text-[15px] font-medium text-link hover:underline"
-      >
-        {review.recommendation === "REPLACE" ? "Consider a replacement" : `Talk to ${workerName}`} ›
+    <p className="text-[15px] text-pretty text-muted-foreground">
+      <span className="font-medium text-foreground">{reviewVerdict(workerName, review.recommendation)}</span>{" "}
+      <Link href={`/workers/${workerId}?tab=performance#latest-review`} className="font-medium text-link hover:underline">
+        Read the review ›
       </Link>
-    </div>
+    </p>
   );
 }
 

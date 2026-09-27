@@ -16,6 +16,7 @@ import OverviewTab from "./_tabs/overview";
 import PerformanceTab from "./_tabs/performance";
 import PermissionsTab from "./_tabs/permissions";
 import VersionsTab from "./_tabs/versions";
+import { loadWorkerChat } from "./_tabs/chat-data";
 import { isWorkerTab, WORKER_TAB_LABELS, type WorkerTab, type WorkerTabProps } from "./_tabs/types";
 
 interface PageProps {
@@ -70,10 +71,15 @@ export default async function WorkerProfilePage({ params, searchParams }: PagePr
 
   const tab = pickTab(query.tab);
   const Tab = TAB_COMPONENTS[tab];
+  // Only someone who could press Run now needs to hear that the chat already queued instructions for the run.
+  const queuedInstructions =
+    worker.permissions["workers.run"] && worker.status === "ACTIVE"
+      ? (await loadWorkerChat(session.organizationId, worker.id, session.role)).pendingInstructions
+      : 0;
 
   return (
     <>
-      <WorkerHeader worker={worker} floatingMobileActions={tab !== "chat"} />
+      <WorkerHeader worker={worker} floatingMobileActions={tab !== "chat"} queuedInstructions={queuedInstructions} />
       <WorkerTabNav workerId={worker.id} workerName={worker.name} active={tab} />
       <div key={tab} className="space-y-14 pt-10">
         <Tab session={session} workerId={worker.id} workerName={worker.name} />

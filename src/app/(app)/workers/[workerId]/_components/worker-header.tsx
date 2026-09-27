@@ -8,6 +8,8 @@ import { WorkerAvatar } from "@/components/worker-avatar";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { WorkerHeaderView } from "@/server/queries/worker-profile";
+import { attentionSentence } from "./labels";
+import { Fact, Facts } from "./rows";
 import { WorkerActions } from "./worker-actions";
 
 /**
@@ -17,10 +19,16 @@ import { WorkerActions } from "./worker-actions";
 export function WorkerHeader({
   worker,
   floatingMobileActions = true,
+  queuedInstructions = 0,
+  now = new Date(),
 }: {
   worker: WorkerHeaderView;
   /** The chat tab owns the bottom of a phone screen, so its actions stay in the header instead. */
   floatingMobileActions?: boolean;
+  /** One-off instructions from the chat that the next run will pick up (shown in the Run now dialog). */
+  queuedInstructions?: number;
+  /** Render time; a parameter so the "next run" wording can be tested without a clock. */
+  now?: Date;
 }) {
   const inFlight = worker.inFlightRun;
   const waiting = inFlight?.status === "WAITING_FOR_APPROVAL";
@@ -58,110 +66,129 @@ export function WorkerHeader({
               hasCurrentVersion={worker.currentVersion !== null}
               permissions={worker.permissions}
               floatOnMobile={floatingMobileActions}
+              inFlightStatus={inFlight?.status ?? null}
+              queuedInstructions={queuedInstructions}
             />
           </div>
         }
       />
 
-      {/* One status for the worker, then the facts a manager glances at — all on one quiet line. */}
-      <p className="text-footnote mb-6 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-muted-foreground">
-        {inFlight ? (
-          <>
-            <StatusBadge kind="run" status={inFlight.status} />
-            <Link href={`/runs/${inFlight.id}`} className="text-link hover:underline">
-              {waiting ? "See what it needs ›" : "Watch live ›"}
-            </Link>
-          </>
-        ) : (
-          <StatusBadge kind="worker" status={worker.status} />
-        )}
-        <Dot />
-        <span title={formatDateTime(worker.hiredAt)}>Hired {formatDate(worker.hiredAt)}</span>
-        <Dot />
-        <span>{worker.schedule.description}</span>
-        <Dot />
-        <span>
-          {worker.status === "RETIRED" ? (
-            `Retired ${formatDate(worker.retiredAt)}`
-          ) : worker.status === "PAUSED" ? (
-            "Paused — no runs scheduled"
-          ) : worker.schedule.nextRunAt ? (
+      {/* One status for the worker, then the facts a manager glances at — all on one quiet line. The separator is
+          drawn before each fact, so when the line wraps on a phone a dot never dangles at the end of a row. */}
+      <Facts label={`${worker.name} at a glance`} className="mb-6 gap-x-2.5 gap-y-1.5">
+        <Fact className="gap-x-2.5">
+          {inFlight ? (
             <>
-              Next run <RelativeTime iso={worker.schedule.nextRunAt} />
+              <StatusBadge kind="run" status={inFlight.status} />
+              {/* While a run waits on you, the callout below carries the one link to the request. */}
+              {waiting ? null : (
+                <Link href={`/runs/${inFlight.id}`} className="text-link hover:underline">
+                  Watch live ›
+                </Link>
+              )}
             </>
           ) : (
-            "Runs when you ask"
+            <StatusBadge kind="worker" status={worker.status} />
           )}
-        </span>
+        </Fact>
+        <Fact className="gap-x-2.5">
+          <span title={formatDateTime(worker.hiredAt)}>Hired {formatDate(worker.hiredAt)}</span>
+        </Fact>
+        <Fact className="gap-x-2.5">{worker.schedule.description}</Fact>
+        <Fact className="gap-x-2.5">{nextRunFact(worker, now)}</Fact>
         {worker.currentVersion ? (
-          <>
-            <Dot />
+          <Fact className="gap-x-2.5">
             <span className="metric">Version {worker.currentVersion.version}</span>
-          </>
+          </Fact>
         ) : null}
-      </p>
+      </Facts>
 
       <div className="mb-8 space-y-3 empty:mb-0">
-        {waiting ? (
-          <Callout
-            tone="warning"
-            text={`${worker.name} is waiting on your go-ahead${
-              worker.pendingApprovals > 1 ? ` for ${worker.pendingApprovals} actions` : ""
-            } before this run can continue.`}
-            href="/approvals"
-            linkLabel="Review the request"
-          />
-        ) : worker.health === "NEEDS_ATTENTION" && worker.healthReason ? (
-          <Callout
-            tone="warning"
-            text={`${worker.name} needs attention. ${worker.healthReason.replace(/\.?$/, ".")}`}
-            href={`/workers/${worker.id}?tab=performance`}
-            linkLabel="See performance"
-          />
-        ) : null}
-
-        {worker.openProposal ? (
-          <Callout
-            tone="neutral"
-            text={
-              worker.openProposal.changeReason === "REPLACEMENT"
-                ? `A replacement for ${worker.name} is drafted as version ${worker.openProposal.version}, and is not live until you decide.`
-                : `A change to how ${worker.name} works is drafted as version ${worker.openProposal.version}, and is not live until you decide.`
-            }
-            href={`/workers/${worker.id}/replace/${worker.openProposal.versionId}`}
-            linkLabel="Compare and decide"
-          />
-        ) : null}
+        {headerCallouts(worker).map((c) => (
+          <Callout key={c.href} {...c} />
+        ))}
       </div>
     </>
   );
 }
 
-function Dot() {
-  return (
-    <span aria-hidden="true" className="text-tertiary">
-      ·
-    </span>
-  );
+/**
+ * "Next run in 2 days" — or, when the scheduled time has already passed, why it has not happened: the scheduler
+ * never starts a second run while one is still in flight, so a past time is not a date to print as "5 days ago".
+ */
+export function nextRunFact(worker: WorkerHeaderView, now: Date): ReactNode {
+  if (worker.status === "RETIRED") return `Retired ${formatDate(worker.retiredAt)}`;
+  if (worker.status === "PAUSED") return "Paused — no runs scheduled";
+  const next = worker.schedule.nextRunAt;
+  if (!next) return "Runs when you ask";
+  if (Date.parse(next) > now.getTime()) {
+    // One inline span: the fact is a flex item, so bare text and the time would be spaced as two items.
+    return (
+      <span>
+        Next run <RelativeTime iso={next} />
+      </span>
+    );
+  }
+  if (worker.inFlightRun?.status === "WAITING_FOR_APPROVAL") return "Next run once you approve this one";
+  if (worker.inFlightRun) return "Next run after this one";
+  return "Next run due now";
+}
+
+interface CalloutSpec {
+  tone: "warning" | "neutral";
+  text: string;
+  href: string;
+  linkLabel: string;
+}
+
+/**
+ * At most one warning panel. Approval beats health; when health dips while a replacement is already drafted,
+ * both facts share one panel whose link is the decision itself.
+ */
+export function headerCallouts(worker: WorkerHeaderView): CalloutSpec[] {
+  const out: CalloutSpec[] = [];
+  const proposal = worker.openProposal;
+  const proposalText = proposal
+    ? proposal.changeReason === "REPLACEMENT"
+      ? `A replacement for ${worker.name} is drafted as version ${proposal.version}, and is not live until you decide.`
+      : `A change to how ${worker.name} works is drafted as version ${proposal.version}, and is not live until you decide.`
+    : null;
+  const compare = proposal ? `/workers/${worker.id}/replace/${proposal.versionId}` : null;
+  let proposalShown = false;
+
+  if (worker.inFlightRun?.status === "WAITING_FOR_APPROVAL") {
+    out.push({
+      tone: "warning",
+      text: `${worker.name} is waiting on your go-ahead${
+        worker.pendingApprovals > 1 ? ` for ${worker.pendingApprovals} actions` : ""
+      } before this run can continue.`,
+      href: "/approvals",
+      linkLabel: "Review the request",
+    });
+  } else if (worker.health === "NEEDS_ATTENTION" && worker.healthReason) {
+    const attention = attentionSentence(worker.name, worker.healthReason);
+    if (proposalText && compare) {
+      out.push({ tone: "warning", text: `${attention} ${proposalText}`, href: compare, linkLabel: "Compare and decide" });
+      proposalShown = true;
+    } else {
+      out.push({ tone: "warning", text: attention, href: `/workers/${worker.id}?tab=performance`, linkLabel: "See performance" });
+    }
+  }
+
+  if (proposalText && compare && !proposalShown) {
+    out.push({ tone: "neutral", text: proposalText, href: compare, linkLabel: "Compare and decide" });
+  }
+  return out;
 }
 
 /** The one soft-tinted panel on the page — used only when something is actually waiting on a person. */
-function Callout({
-  tone,
-  text,
-  href,
-  linkLabel,
-}: {
-  tone: "warning" | "neutral";
-  text: ReactNode;
-  href: string;
-  linkLabel: string;
-}) {
+function Callout({ tone, text, href, linkLabel }: CalloutSpec) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-[14px] px-4 py-3.5 text-[15px] text-pretty sm:flex-row sm:items-center sm:gap-6",
-        tone === "warning" ? "bg-warning-soft text-foreground" : "bg-muted text-foreground",
+        "flex flex-col gap-2 rounded-[14px] px-4 py-3.5 text-[15px] text-pretty text-foreground sm:flex-row sm:items-center sm:gap-6",
+        // The neutral note sits on the gray canvas, so it is a white card rather than a gray fill that vanishes.
+        tone === "warning" ? "bg-warning-soft" : "bg-card shadow-card",
       )}
     >
       <p className="min-w-0 flex-1">{text}</p>

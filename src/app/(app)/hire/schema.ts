@@ -71,6 +71,15 @@ export function exampleJobById(id: string | undefined): ExampleJob | null {
   return EXAMPLE_JOBS.find((job) => job.id === id) ?? null;
 }
 
+/**
+ * The describe step's submit shortcut, spelled with the modifier on the person's own keyboard. Apple platforms
+ * report `MacIntel` / `macOS` / `iPhone` / `iPad` (via `navigator.platform` or `userAgentData.platform`);
+ * everything else — Windows, Linux, ChromeOS, Android, or nothing at all — uses Ctrl.
+ */
+export function submitShortcutLabel(platform: string | undefined): string {
+  return platform && /mac|iphone|ipad|ipod/i.test(platform) ? "⌘ + Enter" : "Ctrl + Enter";
+}
+
 export const ScopeJobInputSchema = z
   .string()
   .transform((v) => v.replace(/\r\n/g, "\n").trim())

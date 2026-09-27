@@ -150,7 +150,7 @@ export function specResponsibilities(args: {
   const target = object ? (COMPANY_FAMILIES.has(family) ? object.full : object.core) : "";
   if (object && target.length <= 140 && !VAGUE_OBJECT.test(target)) {
     const verb = MAKING.test(object.verb) && family !== "content" ? (family === "support_triage" || family === "feedback_analysis" ? "Read" : "Find") : object.verb;
-    const suffix = /\b(?:pages?|sites?|websites?)\b/i.test(target) ? "" : METHOD_SUFFIX[family];
+    const suffix = /\b(?:pages?|sites?|websites?)\b/i.test(target) ? "" : (profile.methodSuffix ?? METHOD_SUFFIX[family]);
     lines.push(`${cap(verb)} ${target}${suffix}`);
   } else {
     lines.push(profile.responsibilities[0]);

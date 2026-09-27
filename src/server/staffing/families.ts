@@ -22,10 +22,17 @@ export interface FamilyProfile {
   tools: string[];
   assumptions: string[];
   questions: FollowUpQuestion[];
+  /** How the first responsibility says where the work is done; the family's default when unset. */
+  methodSuffix?: string;
+  /**
+   * When set, a count in the description counts companies ("our three main competitors"), each good for about
+   * this many records — so "three competitors" is a target of about 3 × N rows, not 3.
+   */
+  recordsPerCompany?: number;
 }
 
-const f = (name: string, description: string, required = false): SpecField => ({ name, description, required });
-const q = (id: string, question: string, why: string, suggestions: string[], placeholder?: string): FollowUpQuestion => ({
+export const f = (name: string, description: string, required = false): SpecField => ({ name, description, required });
+export const q = (id: string, question: string, why: string, suggestions: string[], placeholder?: string): FollowUpQuestion => ({
   id,
   question,
   why,
@@ -33,7 +40,7 @@ const q = (id: string, question: string, why: string, suggestions: string[], pla
   ...(placeholder ? { placeholder } : {}),
 });
 
-const RECIPIENTS_Q = q(
+export const RECIPIENTS_Q = q(
   "recipients",
   "Who should receive the deliverable, and how?",
   "If it should go to someone by email or Slack, the worker gets a notification tool that always waits for your approval.",
