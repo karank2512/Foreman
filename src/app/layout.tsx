@@ -40,7 +40,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     // The Inter variable lives on <html> so `font-sans` / `font-display` resolve everywhere, portals included.
-    <html lang="en" className={inter.variable} data-csp={nonce ? "nonce" : undefined}>
+    // `data-scroll-behavior` tells Next.js we set `scroll-behavior: smooth` on purpose (globals.css), so it keeps
+    // disabling it during route transitions instead of warning on every client navigation.
+    <html
+      lang="en"
+      className={inter.variable}
+      data-csp={nonce ? "nonce" : undefined}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         {/* Theme is pinned: the shadcn wrapper defaults to "system", which would render dark toasts on dark-mode OSes. */}

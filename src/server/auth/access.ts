@@ -18,13 +18,51 @@ export const SESSION_EXPIRED_PARAM = "expired";
 export const SESSION_EXPIRED_SIGN_IN_PATH = `${SIGN_IN_PATH}?${SESSION_EXPIRED_PARAM}=1`;
 
 /**
- * Reachable without a session. `/` is the landing page (it still forwards into the app for now), the two
- * account-creation flows have to work for people who have no account yet, and the ops probes must answer a
- * load balancer that never carries a cookie.
+ * The share image and icons Next.js generates from the files beside `src/app/layout.tsx` (`opengraph-image`,
+ * and `twitter-image` / `icon` / `apple-icon` should they be added). Link-preview crawlers (Slack, X,
+ * LinkedIn, iMessage) never carry a cookie, so a gated share image is one nobody ever sees. Root-level only:
+ * a per-route image such as `/workers/[id]/opengraph-image` could carry workspace data and stays gated.
+ */
+const METADATA_IMAGE_PATHS = ["/opengraph-image", "/twitter-image", "/icon", "/apple-icon"] as const;
+
+/**
+ * Reachable without a session. `/` is the landing page, the two account-creation flows have to work for
+ * people who have no account yet, the ops probes must answer a load balancer that never carries a cookie,
+ * and the metadata images must answer link-preview crawlers.
  *
  * `/api/auth/*` is handled separately below: Auth.js' own endpoints are always allowed, signed in or not.
  */
-const PUBLIC_PATHS = ["/", SIGN_UP_PATH, INVITE_PATH, "/api/health", "/api/ready"] as const;
+export const PUBLIC_PATHS = [
+  "/",
+  SIGN_UP_PATH,
+  INVITE_PATH,
+  "/api/health",
+  "/api/ready",
+  ...METADATA_IMAGE_PATHS,
+] as const;
+
+/**
+ * The application proper: a signed-out visitor is sent to /sign-in and brought back here afterwards. A URL
+ * that is neither public nor under one of these has nothing behind it for anyone, so it falls through to
+ * the 404 page instead of a sign-in prompt for a page that would 404 anyway.
+ *
+ * Kept exhaustive by tests/auth/access.test.ts, which reads the route segments under `src/app`. And every
+ * (app) page sits behind the layout's `requireSession()` regardless, so an omission here would cost the
+ * post-sign-in `callbackUrl`, never the gate.
+ */
+export const PROTECTED_PATHS = [
+  "/workforce",
+  "/workers",
+  "/hire",
+  "/runs",
+  "/deliverables",
+  "/jobs",
+  "/approvals",
+  "/activity",
+  "/settings",
+  "/usage",
+  "/styleguide",
+] as const;
 
 /** Pages a signed-in visitor has no business seeing — they get sent into the app instead. */
 const SIGNED_OUT_ONLY_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH] as const;
@@ -93,6 +131,9 @@ export function decideAccess(req: AccessRequest): AccessDecision {
 
   // API consumers get a status code they can act on, never an HTML redirect.
   if (isUnder(pathname, "/api")) return { kind: "unauthorized" };
+
+  // Nothing lives here for anyone: let Next render the 404 rather than asking the visitor to sign in first.
+  if (!PROTECTED_PATHS.some((base) => isUnder(pathname, base))) return { kind: "allow" };
 
   const target = safeCallbackUrl(`${pathname}${search}`);
   // Keep the URL clean when the visitor was heading to the default landing page anyway.

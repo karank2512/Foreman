@@ -35,7 +35,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         />
         <p className="text-[15px] leading-[22px] text-muted-foreground">
           Already have an account?{" "}
-          <Link href={SIGN_IN_PATH} className="font-medium text-link hover:underline">
+          <Link href={SIGN_IN_PATH} className="-my-[11px] inline-block py-[11px] font-medium text-link hover:underline">
             Sign in <span aria-hidden>›</span>
           </Link>
         </p>
@@ -59,7 +59,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
       <p className="mt-10 border-t border-border pt-6 text-[15px] leading-[22px] text-muted-foreground">
         Already have an account?{" "}
-        <Link href={SIGN_IN_PATH} className="font-medium text-link hover:underline">
+        <Link href={SIGN_IN_PATH} className="-my-[11px] inline-block py-[11px] font-medium text-link hover:underline">
           Sign in <span aria-hidden>›</span>
         </Link>
       </p>

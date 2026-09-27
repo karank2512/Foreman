@@ -183,7 +183,7 @@ export function WorkforceMock({ className }: WorkforceMockProps) {
       <MockNav />
       <div className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-7">
         <MockStatStrip />
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
           {WORKERS.map((worker) => (
             <MockWorkerCard key={worker.name} worker={worker} />
           ))}

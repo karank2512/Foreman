@@ -102,8 +102,8 @@ export default async function WorkforcePage() {
 
 "Server-safe" = no hooks; usable from server and client components alike. All accept an optional `className` unless noted.
 
-### AppShell — `{ user: { name, email, organizationName }, simulated, pendingApprovals, children }`
-Used once, by `(app)/layout.tsx`. Renders the skip link, the frosted `GlobalNav` (Workforce · Jobs · Approvals · Activity, the Simulated chip, the "Hire" pill and the account menu) and `<main>` on the canvas. Destinations live in `shell/nav-items.ts`; detail routes light their parent via `match` prefixes (`/workers`, `/runs`, `/deliverables` → Workforce). Usage and Settings are in the user menu, not the bar.
+### AppShell — `{ user: { name, email, organizationName, canHire }, simulated, pendingApprovals, children }`
+Used once, by `(app)/layout.tsx`. Renders the skip link, the frosted `GlobalNav` (Workforce · Jobs · Approvals · Activity, the Simulated chip, the "Hire" pill and the account menu) and `<main>` on the canvas. `canHire` is `can(role, "workers.hire")`: the Hire pill and the mobile menu's "Hire a worker" only render when it is true. The mobile menu portals its overlay to `document.body` (the frosted bar's `backdrop-filter` would otherwise trap a fixed panel inside the 48px bar). Destinations live in `shell/nav-items.ts`; detail routes light their parent via `match` prefixes (`/workers`, `/runs`, `/deliverables` → Workforce). Usage and Settings are in the user menu, not the bar.
 
 ### LocalNav — `{ title, items, action?, watchSelector? }`
 Sticky under the global nav for pages with sections (worker profile, job detail, run detail). `items: { label, href, active? }[]` — routes or in-page anchors. The title fades in once the page `<h1>` scrolls out of view; on mobile the links scroll horizontally and the active one starts in view.
@@ -137,7 +137,7 @@ Centred, `py-20`, no dashed box — inside a card the card is the frame. Title `
 A 7px tone dot plus a word. `emphasis="auto"` (default) promotes states waiting on a person, and failures, to a soft pill; force with `"dot"` or `"pill"`. Every value of every lifecycle enum is mapped (compile-time exhaustive); unknown strings degrade to a humanized idle status. Notable labels: `WAITING_FOR_APPROVAL` → "Needs approval", `PENDING_REVIEW` → "Awaiting review", `SUCCEEDED` → "Completed", version `REJECTED` → "Declined". RUNNING pulses. **One per object.**
 
 ### WorkerAvatar — `{ name, color, size? }`
-`color`: `Worker.avatarColor` (domain `AVATAR_COLORS`; unknown → violet). `size`: `xs` 24 · `sm` 32 · `md` 40 (default) · `lg` 48 · `xl` 72. Pastel fill, same-hue initials, no ring.
+`color`: `Worker.avatarColor` (domain `AVATAR_COLORS`; unknown → neutral gray). `size`: `xs` 24 · `sm` 32 · `md` 40 (default) · `lg` 48 · `xl` 72. Pastel fill, same-hue initials, no ring. The frozen `violet` / `indigo` tokens render in lime / cyan — there is no purple in this design.
 
 ### ScoreRing / ScoreMetric — `{ score, size? }` / `{ score, label? }`
 `ScoreRing`: a 3px arc, default 44px; the band colours the arc only, the number stays in foreground; `null` = dashed track and an em-dash. `ScoreMetric` is the profile-header form — a big number plus "Performance · Strong".
@@ -168,7 +168,7 @@ Collapsible (native `<details>`), lightly tinted, with copy. Debug surfaces only
 
 ## Primitives (`src/components/ui/*`)
 
-Restyled, API-compatible shadcn. `Button` (variants default/secondary/outline/ghost/destructive/link; sizes xs/sm/default/lg/xl + icon·icon-xs·icon-sm·icon-lg) · `Card` (+ `variant="tile"` for cards on a white background) · `Input`/`Textarea`/`Select` (44px, 12px radius) · `Tabs` (`TabsList` is a segmented control; page-level tabs belong in `LocalNav`) · `Badge` (+ tone variants success/warning/danger/info/neutral) · `Dialog`/`Sheet`/`Popover`/`DropdownMenu` (frosted `material-thick`) · `Switch` (green when on) · `Progress` (omit `value` for the indeterminate rail) · `Skeleton` (opacity pulse, no shimmer) · `Table` (hairline rows) · `Tooltip` · `Checkbox`/`RadioGroup` (18px).
+Restyled, API-compatible shadcn. `Button` (variants default/secondary/outline/ghost/destructive/link; sizes xs/sm/default/lg/xl + icon·icon-xs·icon-sm·icon-lg; under `md` every size below 44px gets an invisible 44px hit area, as do `TabsTrigger`, `LocalNav` links and the PageHeader back link) · `Card` (+ `variant="tile"` for cards on a white background) · `Input`/`Textarea`/`Select` (44px, 12px radius) · `Tabs` (`TabsList` is a segmented control; page-level tabs belong in `LocalNav`) · `Badge` (+ tone variants success/warning/danger/info/neutral) · `Dialog`/`Sheet`/`Popover`/`DropdownMenu` (frosted `material-thick`) · `Switch` (green when on) · `Progress` (omit `value` for the indeterminate rail) · `Skeleton` (opacity pulse, no shimmer) · `Table` (hairline rows) · `Tooltip` · `Checkbox`/`RadioGroup` (18px).
 
 CSS utilities from `globals.css` worth knowing: `material-nav`, `material-thick`, the `text-*` scale, `eyebrow`, `metric`, `live-dot`, and `[data-reveal]` for marketing scroll reveals.
 

@@ -12,7 +12,7 @@ import { formatUsd, pluralize } from "@/lib/format";
 import type { WorkerCardView } from "@/server/queries/workforce";
 import { RunNowButton } from "./run-now-button";
 
-/** What the last finished run did, in one word. */
+/** What the last finished run did, in one word — read as a sentence with the time ("Delivered 4 hours ago"). */
 const LAST_RUN_VERB: Record<RunStatus, string> = {
   SUCCEEDED: "Delivered",
   FAILED: "Run failed",
@@ -54,11 +54,18 @@ function StatusLine({ worker }: { worker: WorkerCardView }) {
     );
   }
   if (worker.health === "NEEDS_ATTENTION") {
+    // One line that never wraps: the reason clips with an ellipsis (full text on hover) rather than breaking
+    // onto a second line that would start with the separator.
     return (
-      <p className="flex flex-wrap items-center gap-x-1.5">
+      <p className="flex min-w-0 items-center gap-x-1.5 text-footnote text-warning">
         <StatusBadge kind="health" status="NEEDS_ATTENTION" emphasis="dot" />
         {worker.healthReason ? (
-          <span className="text-footnote text-pretty text-warning">· {worker.healthReason}</span>
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="min-w-0 truncate" title={worker.healthReason}>
+              {worker.healthReason}
+            </span>
+          </>
         ) : null}
       </p>
     );
@@ -107,7 +114,7 @@ export function WorkerCard({ worker, canRun }: WorkerCardProps) {
           <Fact label="Last run">
             {worker.lastRun ? (
               <Link href={`/runs/${worker.lastRun.id}`} className="outline-none hover:text-link">
-                {LAST_RUN_VERB[worker.lastRun.status]} · <RelativeTime iso={worker.lastRun.at} />
+                {LAST_RUN_VERB[worker.lastRun.status]} <RelativeTime iso={worker.lastRun.at} />
               </Link>
             ) : worker.activeRun ? (
               <span className="text-muted-foreground">First run in progress</span>
@@ -145,7 +152,8 @@ export function WorkerCard({ worker, canRun }: WorkerCardProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="justify-between gap-3">
+      {/* Grid rows stretch every card to the tallest; pinning the footer keeps the pills level across the row. */}
+      <CardFooter className="mt-auto justify-between gap-3">
         <RunNowButton workerId={worker.id} workerName={worker.name} disabledReason={blocker} />
         <Button variant="link" asChild>
           <Link href={profile}>

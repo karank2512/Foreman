@@ -24,7 +24,7 @@ export function AuthNav({ signUpOpen }: { signUpOpen: boolean }) {
   return (
     <header className="sticky top-0 z-40 h-(--nav-height) bg-[rgb(251_251_253_/_0.8)] shadow-[inset_0_-0.5px_0_var(--hairline)] backdrop-blur-[20px] backdrop-saturate-[180%]">
       <div className="mx-auto flex h-full w-full max-w-(--container-app) items-center px-4 sm:px-6">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-sm outline-none">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-sm outline-none">
           <LogoGlyph />
           <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap">
             AI Staffing Agency
@@ -34,7 +34,8 @@ export function AuthNav({ signUpOpen }: { signUpOpen: boolean }) {
         {link ? (
           <Link
             href={link.href}
-            className="text-footnote ml-auto rounded-sm font-medium text-link outline-none hover:underline"
+            // 44px tall and padded sideways for the thumb; the negative margin keeps the text flush right.
+            className="text-footnote -mr-3 ml-auto inline-flex h-11 items-center rounded-sm px-3 font-medium text-link outline-none hover:underline"
           >
             {link.label}
           </Link>

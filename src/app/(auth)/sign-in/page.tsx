@@ -58,7 +58,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       {signUpOpen ? (
         <p className="mt-10 border-t border-border pt-6 text-[15px] leading-[22px] text-muted-foreground">
           New to AI Staffing Agency?{" "}
-          <Link href={SIGN_UP_PATH} className="font-medium text-link hover:underline">
+          <Link href={SIGN_UP_PATH} className="-my-[11px] inline-block py-[11px] font-medium text-link hover:underline">
             Create an account <span aria-hidden>›</span>
           </Link>
         </p>

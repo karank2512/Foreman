@@ -110,14 +110,14 @@ export function AuthStaticField({ label, value }: { label: string; value: string
   );
 }
 
-/** The in-field "Show" / "Hide" text toggle; a word beats an eye icon here. */
+/** The in-field "Show" / "Hide" text toggle; a word beats an eye icon here. 44px square inside the 56px field. */
 export function ShowToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={shown}
-      className="rounded-full px-2 py-1 text-[13px] font-medium text-link outline-none hover:underline"
+      className="inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2 text-[13px] font-medium text-link outline-none hover:underline"
     >
       {shown ? "Hide" : "Show"}
       <span className="sr-only"> password</span>

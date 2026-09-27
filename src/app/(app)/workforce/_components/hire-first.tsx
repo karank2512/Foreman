@@ -1,24 +1,15 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { EXAMPLE_JOBS, type ExampleJob } from "@/app/(app)/hire/schema";
 
-/** Concrete briefs, in the words a manager would actually use. They deep-link into the hire flow. */
-const EXAMPLES = [
-  {
-    label: "Weekly competitor digest",
-    brief:
-      "Every Monday, summarize what our three main competitors shipped last week and email it to the product team.",
-  },
-  {
-    label: "Support inbox triage",
-    brief:
-      "Every morning, read yesterday's support emails, group them into themes with counts, and quote one example each.",
-  },
-  {
-    label: "Friday lead list",
-    brief:
-      "Each Friday, build a list of 20 Series A fintech companies hiring revenue operations, with one line on why each fits.",
-  },
-];
+/**
+ * The example pills deep-link by example *id*: /hire resolves `prefill` with `exampleJobById`, which only knows
+ * the ids in `EXAMPLE_JOBS`, so a pill that carried the brief text itself would open an empty form. One list of
+ * briefs, shared with the Describe step, keeps the two surfaces from drifting apart.
+ */
+export function hireExampleHref(job: Pick<ExampleJob, "id">): string {
+  return `/hire?prefill=${encodeURIComponent(job.id)}`;
+}
 
 /**
  * What a brand-new workspace sees instead of a roster: one sentence about the job to be done, one pill, and
@@ -40,9 +31,9 @@ export function HireFirst({ canHire }: { canHire: boolean }) {
           </Button>
           <p className="text-footnote mt-12 text-muted-foreground">Or start from one of these</p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            {EXAMPLES.map((example) => (
-              <Button key={example.label} variant="secondary" asChild>
-                <Link href={`/hire?prefill=${encodeURIComponent(example.brief)}`}>{example.label}</Link>
+            {EXAMPLE_JOBS.map((job) => (
+              <Button key={job.id} variant="secondary" asChild>
+                <Link href={hireExampleHref(job)}>{job.label}</Link>
               </Button>
             ))}
           </div>

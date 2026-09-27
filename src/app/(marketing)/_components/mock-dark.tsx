@@ -66,7 +66,7 @@ export function DarkWorkforceMock({ className }: { className?: string }) {
       aria-label="A dark workspace view: average worker score climbing from 62 to 89 over twelve weeks, beside a list of four workers — Maya running now at 88, Theo idle at 81, Nadia waiting on a decision at 79 and Priya needing attention at 74."
       className={cn("rounded-4xl bg-[#1d1d1f] p-5 sm:p-8", className)}
     >
-      <div className="grid gap-5 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <div className="rounded-3xl bg-[rgb(255_255_255_/_0.04)] p-6 lg:col-span-7">
           <div className="flex items-baseline justify-between gap-4">
             <p className="text-[15px] font-semibold text-white">Team performance</p>

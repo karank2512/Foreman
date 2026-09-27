@@ -5,6 +5,7 @@ import { WorkerAvatar } from "@/components/worker-avatar";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber, formatTokens, formatUsd, formatUsdPrecise, pluralize } from "@/lib/format";
+import { initialsOf } from "@/lib/initials";
 import type { UsageModelRow, UsageToolRow, UsageWorkerRow } from "@/server/queries/usage";
 
 /**
@@ -18,26 +19,38 @@ function Empty({ children }: { children: ReactNode }) {
 }
 
 /** The mobile form of one row: a sentence, then the money. */
-function ListRow({ title, meta, value, sub }: { title: ReactNode; meta: ReactNode; value: string; sub?: string }) {
+function ListRow({ title, meta, value }: { title: ReactNode; meta: ReactNode; value: string }) {
   return (
     <li className="mx-6 flex items-start justify-between gap-4 border-b border-border py-4 last:border-0">
       <div className="min-w-0 space-y-0.5">
         <p className="truncate text-[15px] font-medium text-foreground">{title}</p>
         <p className="text-footnote text-muted-foreground">{meta}</p>
       </div>
-      <div className="shrink-0 text-right">
-        <p className="metric text-[15px] font-medium text-foreground">{value}</p>
-        {sub ? <p className="metric text-footnote text-muted-foreground">{sub}</p> : null}
-      </div>
+      <p className="metric shrink-0 text-right text-[15px] font-medium text-foreground">{value}</p>
     </li>
   );
 }
 
-function WorkerName({ row }: { row: UsageWorkerRow }) {
+/**
+ * Platform work (scoping, reviews, chat) has no worker behind it, so its row wears the workspace's own
+ * monogram in the neutral grey — the same shape as the avatars above it, without pretending to be one.
+ */
+function OrganizationMonogram({ name }: { name: string }) {
+  return (
+    <span
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tracking-tight text-muted-foreground select-none"
+      aria-hidden="true"
+    >
+      {initialsOf(name)}
+    </span>
+  );
+}
+
+function WorkerName({ row, organizationName }: { row: UsageWorkerRow; organizationName: string }) {
   return (
     <span className="flex items-center gap-2.5">
       {row.workerId === null ? (
-        <span className="size-8 shrink-0 rounded-full bg-muted" aria-hidden="true" />
+        <OrganizationMonogram name={organizationName} />
       ) : (
         <WorkerAvatar name={row.workerName} color={row.avatarColor ?? "violet"} size="sm" />
       )}
@@ -52,7 +65,7 @@ function WorkerName({ row }: { row: UsageWorkerRow }) {
   );
 }
 
-export function WorkerCostTable({ rows }: { rows: UsageWorkerRow[] }) {
+export function WorkerCostTable({ rows, organizationName }: { rows: UsageWorkerRow[]; organizationName: string }) {
   if (rows.length === 0) {
     return (
       <Card className="py-0">
@@ -75,7 +88,6 @@ export function WorkerCostTable({ rows }: { rows: UsageWorkerRow[] }) {
               </>
             }
             value={formatUsd(row.costUsd)}
-            sub={`${formatUsd(row.billableUsd)} billable`}
           />
         ))}
       </ul>
@@ -88,19 +100,17 @@ export function WorkerCostTable({ rows }: { rows: UsageWorkerRow[] }) {
               <TableHead className="text-right">Runs</TableHead>
               <TableHead className="text-right">Per run</TableHead>
               <TableHead className="text-right">Cost</TableHead>
-              <TableHead className="text-right">Billable</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.workerId ?? "platform"} className="h-14">
                 <TableCell>
-                  <WorkerName row={row} />
+                  <WorkerName row={row} organizationName={organizationName} />
                 </TableCell>
                 <TableCell className="metric text-right">{row.runs > 0 ? formatNumber(row.runs, 0) : "—"}</TableCell>
                 <TableCell className="metric text-right text-muted-foreground">{formatUsdPrecise(row.costPerRunUsd)}</TableCell>
                 <TableCell className="metric text-right font-medium">{formatUsd(row.costUsd)}</TableCell>
-                <TableCell className="metric text-right text-muted-foreground">{formatUsd(row.billableUsd)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -43,7 +43,7 @@ export function MembersSection({ members, invitations, currentUserId, canInvite,
     <div className="space-y-10">
       <SettingsGroup
         title="People"
-        description="Roles are enforced on the server — hiding a button is only a courtesy."
+        description="Who's on the team, and what each of them can do here."
         footer={
           canManage
             ? "A workspace always keeps at least one owner. Removing someone keeps their runs and reviews on file, but signs them out everywhere."

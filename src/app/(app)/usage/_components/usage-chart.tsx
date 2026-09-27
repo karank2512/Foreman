@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export interface UsageChartProps {
   /** One entry per calendar day, oldest first, zero-filled (`date` = yyyy-MM-dd). */
-  byDay: Array<{ date: string; modelCostUsd: number; toolCostUsd: number; billableUsd: number }>;
+  byDay: Array<{ date: string; modelCostUsd: number; toolCostUsd: number }>;
   className?: string;
 }
 
@@ -107,10 +107,6 @@ export function UsageChart({ byDay, className }: UsageChartProps) {
                             Tool fees
                           </dt>
                           <dd className="metric text-foreground">{formatUsdPrecise(d.toolCostUsd)}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-6 pt-1 text-muted-foreground">
-                          <dt>Billable</dt>
-                          <dd className="metric">{formatUsdPrecise(d.billableUsd)}</dd>
                         </div>
                       </dl>
                     ) : null}

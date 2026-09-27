@@ -48,7 +48,8 @@ const PLANS: Plan[] = [
   {
     name: "Enterprise",
     description: "For custom controls, SSO, and volume.",
-    price: "Talk to us",
+    // "Talk to us" would promise a sales path that doesn't exist yet; the button below is the only next step.
+    price: "Custom",
     priceNote: "Pricing coming soon.",
     lines: [
       "Single sign-on",
@@ -69,14 +70,14 @@ export function PricingTeaser() {
         description="Start free, then pay for what your workers actually do. Every run is itemized."
       />
 
-      <div className="mt-16 grid gap-6 lg:grid-cols-3">
+      <div className="mt-16 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {PLANS.map((plan, index) => (
           <div
             key={plan.name}
             {...reveal(index)}
             className={cn(
               // Never a ring and a shadow on the same card: the emphasised tier is marked by its border alone.
-              "flex flex-col rounded-2xl bg-card p-7",
+              "flex min-w-0 flex-col rounded-2xl bg-card p-7",
               plan.emphasized ? "ring-2 ring-primary" : "shadow-card",
             )}
           >

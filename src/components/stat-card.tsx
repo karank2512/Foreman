@@ -49,20 +49,26 @@ function defaultTone(direction: StatTrend["direction"]): NonNullable<StatTrend["
   return "neutral";
 }
 
-/** One cell of a `StatStrip`: quiet label, big number, one optional line of context. */
+/**
+ * One cell of a `StatStrip`: quiet label, big number, one optional line of context.
+ *
+ * The number is the point of the cell, so it wraps rather than truncates, and in the 2×2 strip under `md`
+ * (about 140px of content per cell) the sparkline steps aside — "$…" next to an intact trend line is the wrong
+ * thing to keep.
+ */
 export function Stat({ label, value, hint, trend, className }: StatProps) {
   const tone = trend ? (trend.tone ?? defaultTone(trend.direction)) : "neutral";
   const arrow = trend?.direction ? TREND_ARROW[trend.direction] : null;
   const hasTrendLine = Boolean(trend && (trend.direction || trend.label));
 
   return (
-    <div data-slot="stat" className={cn("flex flex-col gap-1.5 bg-card p-6", className)}>
+    <div data-slot="stat" className={cn("flex flex-col gap-1.5 bg-card p-5 md:p-6", className)}>
       <p className="truncate text-footnote font-medium text-muted-foreground">{label}</p>
 
       <div className="flex items-end justify-between gap-4">
-        <div className="text-metric min-w-0 truncate text-foreground">{value}</div>
+        <div className="text-metric min-w-0 [overflow-wrap:anywhere] text-foreground">{value}</div>
         {trend?.values && trend.values.length > 1 ? (
-          <Sparkline values={trend.values} className="mb-1.5 h-7 w-20 shrink-0" />
+          <Sparkline values={trend.values} className="mb-1.5 hidden h-7 w-20 shrink-0 md:inline-block" />
         ) : null}
       </div>
 

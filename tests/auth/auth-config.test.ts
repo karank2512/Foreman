@@ -152,10 +152,15 @@ describe("authorized callback (middleware gate)", () => {
     expect(res.status).toBe(401);
   });
 
-  it("lets the public landing page and the ops probes through without a session", async () => {
+  it("lets the public landing page, the ops probes and the share image through without a session", async () => {
     expect(await gate("http://localhost:3000/", null)).toBe(true);
     expect(await gate("http://localhost:3000/api/health", null)).toBe(true);
     expect(await gate("http://localhost:3000/sign-up", null)).toBe(true);
+    expect(await gate("http://localhost:3000/opengraph-image", null)).toBe(true);
+  });
+
+  it("lets a URL outside the app reach the 404 page without a session", async () => {
+    expect(await gate("http://localhost:3000/nope", null)).toBe(true);
   });
 
   it("sends signed-in visitors away from /sign-in, but not the form's POST", async () => {

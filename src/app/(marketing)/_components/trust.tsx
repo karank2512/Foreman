@@ -42,9 +42,9 @@ export function Trust() {
         description="Your workers act on your behalf, so the guardrails are part of the product, not an add-on."
       />
 
-      <div className="mt-16 grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-16 grid grid-cols-1 gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
         {ITEMS.map((item, index) => (
-          <div key={item.title} {...reveal(index % 3)}>
+          <div key={item.title} {...reveal(index % 3)} className="min-w-0">
             <h3 className="text-title-3">{item.title}</h3>
             <p className="mt-2 text-[15px] leading-[22px] text-muted-foreground">{item.body}</p>
           </div>

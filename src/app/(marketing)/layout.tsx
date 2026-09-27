@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { getSession } from "@/server/auth";
+import { config } from "@/server/config";
 import { llm } from "@/server/models";
 import { MarketingNav } from "./_components/marketing-nav";
 import { ScrollReveal } from "./_components/reveal";
 import { SiteFooter } from "./_components/site-footer";
+import "./marketing.css";
+
+export const metadata: Metadata = {
+  // Makes `canonical`, `og:url` and the share image absolute — crawlers ignore relative ones. AUTH_URL is
+  // required in production (env.ts); the localhost fallback only ever serves a developer's own machine.
+  metadataBase: new URL(config.publicUrl ?? `http://localhost:${process.env.PORT ?? "3000"}`),
+};
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",

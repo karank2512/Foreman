@@ -26,6 +26,9 @@ export interface GlobalNavProps {
 /**
  * The frosted 48px bar that every authenticated page hangs under. Four text destinations, one primary pill and
  * the account menu — everything else lives inside a page. Client-side only because it needs `usePathname()`.
+ *
+ * The Hire pill is the one blue action in the chrome, so it only appears for roles that can actually hire
+ * (`user.canHire`, ADMIN and up) — a member who tapped it would land on a refusal page.
  */
 export function GlobalNav({ user, simulated, pendingApprovals }: GlobalNavProps) {
   const pathname = usePathname() ?? "";
@@ -78,7 +81,7 @@ export function GlobalNav({ user, simulated, pendingApprovals }: GlobalNavProps)
             </>
           ) : null}
 
-          {onHire ? null : (
+          {onHire || !user.canHire ? null : (
             <Link
               href={HIRE_HREF}
               className="hidden h-7 items-center rounded-full bg-primary px-3.5 text-footnote font-medium text-primary-foreground transition-colors duration-200 ease-standard outline-none hover:bg-primary-hover active:bg-primary-active md:inline-flex"

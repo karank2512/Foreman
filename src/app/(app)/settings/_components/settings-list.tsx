@@ -90,6 +90,23 @@ export function Mono({ children }: { children: ReactNode }) {
   return <span className="font-mono text-[13px] text-foreground">{children}</span>;
 }
 
+/**
+ * Server tuning — env vars, commands — that only the person running the platform acts on. Folded away so a
+ * workspace owner reads product language first and the ops detail is one click away, not the headline.
+ * Native `<details>`, so it works in server components with no client state.
+ */
+export function OperatorNotes({ children }: { children: ReactNode }) {
+  return (
+    <details className="group/operator px-1">
+      <summary className="w-fit cursor-pointer list-none rounded-sm text-footnote font-medium text-link outline-none select-none hover:underline [&::-webkit-details-marker]:hidden">
+        <span className="group-open/operator:hidden">For operators ›</span>
+        <span className="hidden group-open/operator:inline">Hide operator notes</span>
+      </summary>
+      <div className="text-footnote mt-2 max-w-[62ch] space-y-2 text-pretty text-muted-foreground">{children}</div>
+    </details>
+  );
+}
+
 /** The one tinted panel in the area, for the single state that needs a person (budget spent, workspace suspended). */
 export function Callout({ tone = "attention", children }: { tone?: "attention" | "failure"; children: ReactNode }) {
   return (

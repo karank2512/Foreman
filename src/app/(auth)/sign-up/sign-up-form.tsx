@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { AuthField } from "../_components/field";
 import { FormAlert, SubmitButton } from "../_components/form-ui";
 import { PasswordField } from "../_components/password-field";
@@ -18,6 +17,9 @@ interface SignUpFormProps {
  * Creates the workspace and its first owner, then signs in (the action redirects, so a success never comes
  * back as state). Inputs are controlled: React resets uncontrolled fields after a form action, which would
  * wipe everything typed on a failed attempt.
+ *
+ * There is no "I agree to the Terms" checkbox on purpose: no terms or privacy policy have been published, and
+ * asking for consent to documents nobody can read is worse than saying so plainly under the button.
  */
 export function SignUpForm({ inviteCodeRequired, passwordMinLength }: SignUpFormProps) {
   const [state, formAction, isPending] = useActionState<SignUpState, FormData>(signUpAction, { error: null });
@@ -26,7 +28,6 @@ export function SignUpForm({ inviteCodeRequired, passwordMinLength }: SignUpForm
   const [organizationName, setOrganizationName] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [agreed, setAgreed] = useState(false);
 
   const error = isPending ? null : state.error;
 
@@ -99,30 +100,13 @@ export function SignUpForm({ inviteCodeRequired, passwordMinLength }: SignUpForm
         />
       ) : null}
 
-      <label className="mt-2 flex items-start gap-3 text-[14px] leading-5 text-muted-foreground">
-        <Checkbox
-          checked={agreed}
-          onCheckedChange={(value) => setAgreed(value === true)}
-          disabled={isPending}
-          className="mt-0.5"
-          aria-label="I agree to the Terms and Privacy Policy"
-        />
-        <span>I agree to the Terms and the Privacy Policy.</span>
-      </label>
-
       <div className="mt-2">
-        <SubmitButton
-          pending={isPending}
-          disabled={!agreed}
-          label="Create account"
-          pendingLabel="Creating account…"
-        />
+        <SubmitButton pending={isPending} label="Create account" pendingLabel="Creating account…" />
       </div>
-      {!agreed ? (
-        <p className="text-center text-[13px] leading-[18px] text-muted-foreground">
-          Tick the box above to continue.
-        </p>
-      ) : null}
+      <p className="text-center text-[13px] leading-[18px] text-muted-foreground">
+        Early access: there are no published terms or privacy policy yet. You&rsquo;ll be asked to accept them
+        once they exist.
+      </p>
     </form>
   );
 }

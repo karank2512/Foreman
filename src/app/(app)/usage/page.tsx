@@ -7,10 +7,9 @@ import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatNumber, formatPercent, formatTokens, formatUsd } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { requireSession } from "@/server/auth";
 import { getUsagePage, parseUsageRange } from "@/server/queries/usage";
-import { BillingNote } from "./_components/billing-note";
+import { spendTrend, type SpendTrend } from "./_lib/trend";
 import { RangePicker } from "./_components/range-picker";
 import { UsageChart } from "./_components/usage-chart";
 import { ModelCostTable, ToolCostTable, WorkerCostTable } from "./_components/usage-tables";
@@ -28,6 +27,32 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
   );
 }
 
+const ARROW = { up: "↑", down: "↓" } as const;
+
+/**
+ * The comparison line under the headline, in the same quiet grey as everything else: more spend is not an
+ * alarm, it is usually more work done. Direction is a glyph for sighted readers and a word for the rest.
+ */
+function Trend({ trend, days }: { trend: SpendTrend; days: number }) {
+  if (trend.kind === "none") return <>Nothing was spent in the {days} days before this.</>;
+  if (trend.kind === "flat") return <>About the same as the previous {days} days.</>;
+  return (
+    <>
+      <span aria-hidden="true">{ARROW[trend.direction]} </span>
+      <span className="sr-only">{trend.direction === "up" ? "Up" : "Down"} </span>
+      {trend.kind === "percent" ? (
+        <>
+          <span className="metric">{formatPercent(trend.ratio)}</span> vs the previous {days} days
+        </>
+      ) : (
+        <>
+          from <span className="metric">{formatUsd(trend.previousUsd)}</span> in the previous {days} days
+        </>
+      )}
+    </>
+  );
+}
+
 export default async function UsagePage({ searchParams }: { searchParams: Promise<{ range?: string | string[] }> }) {
   const [s, params] = await Promise.all([requireSession(), searchParams]);
   const days = parseUsageRange(params.range);
@@ -37,8 +62,7 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
 
   // The same window, one window back — the only honest way to say "less than last time".
   const previous = usage.hasUsage ? await getUsagePage(s.organizationId, days, subDays(now, days)) : null;
-  const previousCost = previous?.totals.costUsd ?? 0;
-  const change = previousCost > 0 ? (totals.costUsd - previousCost) / previousCost : null;
+  const trend = spendTrend(totals.costUsd, previous?.totals.costUsd ?? 0);
   const mixedSimulation = usage.byModel.some((m) => m.simulated) && usage.byModel.some((m) => !m.simulated);
 
   return (
@@ -58,17 +82,7 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
                   <p className="text-footnote font-medium text-muted-foreground">Spent in the last {days} days</p>
                   <p className="text-metric-xl mt-2 text-foreground">{formatUsd(totals.costUsd)}</p>
                   <p className="text-footnote mt-2 text-muted-foreground">
-                    {change === null ? (
-                      <>Nothing was spent in the {days} days before this.</>
-                    ) : (
-                      <>
-                        <span className={cn(change > 0 ? "text-danger" : change < 0 ? "text-success" : undefined)}>
-                          <span aria-hidden="true">{change > 0 ? "↑ " : change < 0 ? "↓ " : "→ "}</span>
-                          {formatPercent(Math.abs(change))}
-                        </span>{" "}
-                        vs the previous {days} days
-                      </>
-                    )}
+                    <Trend trend={trend} days={days} />
                   </p>
                   {usage.simulatedMode ? (
                     <p className="text-footnote mt-5 max-w-[46ch] text-pretty text-muted-foreground">
@@ -77,12 +91,7 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
                   ) : null}
                 </div>
 
-                <div className="grid grid-cols-3 gap-px bg-border lg:grid-cols-1">
-                  <Figure
-                    label="Billable"
-                    value={formatUsd(totals.billableUsd)}
-                    hint={`cost × ${formatNumber(usage.marginMultiplier, 2)}`}
-                  />
+                <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-1">
                   <Figure
                     label="Runs"
                     value={formatNumber(totals.runs, 0)}
@@ -110,7 +119,7 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
               title="By worker"
               description="Who is spending what. Open a worker to see the same money run by run."
             >
-              <WorkerCostTable rows={usage.byWorker} />
+              <WorkerCostTable rows={usage.byWorker} organizationName={s.organizationName} />
             </Section>
 
             <Section title="By model" description="Every model that answered, and the tokens it read and wrote.">
@@ -141,19 +150,6 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
             />
           </Card>
         )}
-
-        <Section
-          title="How these numbers work"
-          description="Two amounts appear all over this page. Here is what each one means."
-        >
-          <BillingNote
-            marginMultiplier={usage.marginMultiplier}
-            costUsd={totals.costUsd}
-            billableUsd={totals.billableUsd}
-            simulatedMode={usage.simulatedMode}
-            simulatedShare={totals.simulatedShare}
-          />
-        </Section>
       </div>
     </>
   );

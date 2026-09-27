@@ -24,6 +24,15 @@ const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: "MEMBER", label: "Member" },
 ];
 
+/**
+ * Radix's `<SelectValue />` fills itself from the chosen item's text, which only exists after hydration —
+ * server markup ships an empty trigger. Passing the label as children makes the server render read what the
+ * hydrated page reads.
+ */
+function roleLabel(role: UserRole): string {
+  return ROLE_OPTIONS.find((option) => option.value === role)?.label ?? role;
+}
+
 export function MemberMenu({ userId, name, role }: { userId: string; name: string; role: UserRole }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -45,7 +54,7 @@ export function MemberMenu({ userId, name, role }: { userId: string; name: strin
     <>
       <Select value={role} onValueChange={change} disabled={pending}>
         <SelectTrigger size="sm" aria-label={`Role for ${name}`} className="w-32">
-          <SelectValue />
+          <SelectValue>{roleLabel(role)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {ROLE_OPTIONS.map((option) => (
@@ -163,7 +172,7 @@ export function InviteForm() {
               <Label htmlFor={ids.role}>Role</Label>
               <Select value={role} onValueChange={(next) => setRole(next as "MEMBER" | "ADMIN")} disabled={pending}>
                 <SelectTrigger id={ids.role} className="w-full sm:w-36">
-                  <SelectValue />
+                  <SelectValue>{roleLabel(role)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MEMBER">Member</SelectItem>

@@ -18,6 +18,8 @@ export interface ShellUser {
   name: string;
   email: string;
   organizationName: string;
+  /** `can(role, "workers.hire")` — whether the chrome shows the Hire pill and "Hire a worker". */
+  canHire: boolean;
 }
 
 /**

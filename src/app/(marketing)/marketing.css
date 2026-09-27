@@ -1,0 +1,34 @@
+/*
+ * Marketing-only rules, imported by src/app/(marketing)/layout.tsx.
+ *
+ * Scroll reveal, progressive-enhancement side. globals.css hides `[data-reveal]` under `@media (scripting:
+ * enabled)`, which is true the instant JavaScript is allowed — long before the bundle arrives — so on its own
+ * it blanks the page until hydration. The hidden state is therefore armed only once the reveal island has
+ * mounted and stamped <html data-reveal-ready> (see _components/reveal.tsx); until then, and for anyone
+ * whose JavaScript never runs, everything is simply visible.
+ */
+html:not([data-reveal-ready]) [data-reveal] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/*
+ * The hero showcase frame is the one page element allowed a longer entrance (600ms, 24px rise). It runs as a
+ * plain CSS animation from first paint, not as a scroll reveal, so it never waits for hydration either. The
+ * global reduced-motion net in globals.css flattens it to a single frame.
+ */
+@keyframes marketing-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.marketing-hero-rise {
+  animation: marketing-hero-rise 600ms var(--motion-ease-out) both;
+}

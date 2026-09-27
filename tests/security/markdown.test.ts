@@ -38,6 +38,20 @@ describe("markdown parsing: pathological input", () => {
     ["many bare-URL starts", "h".repeat(60_000)],
     ["long escape run", "\\".repeat(60_000)],
     ["long link-ish run", "[".repeat(20_000)],
+    // At the real document cap. Each failed `[` scans a full 2,000-character window and consumes only itself,
+    // so before the per-document scan budget every one of these took ~0.8 s.
+    ["nothing but link openers, at the cap", "[".repeat(MAX_MARKDOWN_CHARS)],
+    ["nothing but image openers, at the cap", "![".repeat(MAX_MARKDOWN_CHARS / 2)],
+    ["link openers with filler, at the cap", "[a".repeat(MAX_MARKDOWN_CHARS / 2)],
+    ["unclosed link targets, at the cap", "[x](".repeat(MAX_MARKDOWN_CHARS / 4)],
+    ["mixed openers, at the cap", "[*_".repeat(Math.floor(MAX_MARKDOWN_CHARS / 3))],
+    // The budget is per document, not per paragraph, cell or list item.
+    ["link openers split across paragraphs, at the cap", Array.from({ length: 100 }, () => "[".repeat(1_999)).join("\n\n")],
+    ["link openers split across list items, at the cap", Array.from({ length: 100 }, () => `- ${"[".repeat(1_990)}`).join("\n")],
+    [
+      "link openers split across table cells, at the cap",
+      ["| a | b |", "| --- | --- |", ...Array.from({ length: 100 }, () => `| ${"[".repeat(900)} | ${"[".repeat(900)} |`)].join("\n"),
+    ],
   ];
 
   for (const [name, source] of cases) {
@@ -91,6 +105,44 @@ describe("markdown parsing: behaviour is unchanged", () => {
     const blocks = parseMarkdown(`# ${"word ".repeat(1_000)}`);
     expect(blocks).toHaveLength(1);
     expect(blocks[0].type).toBe("paragraph");
+  });
+});
+
+describe("markdown parsing: inline scan budget", () => {
+  it("never touches a document at the cap that is nothing but real links", () => {
+    const link = "[Acme](https://acme.example/pricing) ";
+    const count = Math.floor(MAX_MARKDOWN_CHARS / link.length);
+    const blocks = parseMarkdown(link.repeat(count));
+    expect(blocks).toHaveLength(1);
+    const paragraph = blocks[0];
+    if (paragraph.type !== "paragraph") throw new Error("expected a paragraph");
+    expect(paragraph.children.filter((n) => n.type === "link")).toHaveLength(count);
+  });
+
+  it("degrades to plain text, without throwing, once a document has spent the budget", () => {
+    // A same-site target: an absolute URL would be autolinked as bare text whatever the budget says.
+    const tail = "[ok](/runs/r1)";
+    const control = parseMarkdown(tail)[0];
+    if (control.type !== "paragraph") throw new Error("expected a paragraph");
+    expect(control.children.some((n) => n.type === "link")).toBe(true);
+
+    const source = `${"[".repeat(MAX_MARKDOWN_CHARS - tail.length)}${tail}`;
+    const blocks = parseMarkdown(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("paragraph");
+    if (blocks[0].type !== "paragraph") throw new Error("expected a paragraph");
+    expect(blocks[0].children.some((n) => n.type === "link")).toBe(false);
+    expect(inlineToText(blocks[0].children)).toBe(source);
+  });
+
+  it("parses inline markup in every table column, however wide the table", () => {
+    const columns = 30;
+    const header = `| ${Array.from({ length: columns }, (_, i) => `h${i}`).join(" | ")} |`;
+    const delimiter = `| ${Array.from({ length: columns }, () => "---").join(" | ")} |`;
+    const row = `| ${Array.from({ length: columns }, (_, i) => (i === columns - 1 ? "**bold**" : "x")).join(" | ")} |`;
+    const table = parseMarkdown([header, delimiter, row].join("\n"))[0];
+    if (table.type !== "table") throw new Error("expected a table");
+    expect(table.rows[0][columns - 1]).toEqual([{ type: "strong", children: [{ type: "text", value: "bold" }] }]);
   });
 });
 

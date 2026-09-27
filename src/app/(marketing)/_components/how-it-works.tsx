@@ -25,9 +25,9 @@ export function HowItWorks() {
     <MarketingSection id="how" tone="gray">
       <SectionIntro title="Three steps from idea to output." />
 
-      <ol className="mt-16 grid gap-10 md:grid-cols-3 md:gap-8">
+      <ol className="mt-16 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
         {STEPS.map((step, index) => (
-          <li key={step.title} {...reveal(index)} className="flex flex-col">
+          <li key={step.title} {...reveal(index)} className="flex min-w-0 flex-col">
             <p className="text-[48px] leading-none font-semibold tracking-[-0.02em] text-tertiary tabular-nums">
               {index + 1}
             </p>

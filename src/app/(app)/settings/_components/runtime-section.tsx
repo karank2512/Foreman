@@ -1,18 +1,21 @@
 import { CopyButton } from "@/components/copy-button";
 import { formatDuration, pluralize } from "@/lib/format";
 import type { SettingsExecutor } from "@/server/queries/settings";
-import { Mono, SettingsGroup, SettingsRow, SettingsValue, StatusLine } from "./settings-list";
+import { Mono, OperatorNotes, SettingsGroup, SettingsRow, SettingsValue, StatusLine } from "./settings-list";
 
-const SEED_COMMAND = "npm run db:seed";
+const SEED_COMMAND = "npm run db:seed:demo";
 
 export interface RuntimeSectionProps {
   /** Executor tuning is platform-operator config: null for anyone below OWNER (audit INF-19). */
   executor: SettingsExecutor | null;
-  /** Hide the re-seed instructions where there is no demo data to re-seed. */
+  /** Only the demo workspace has demo data to put back, and only outside production. */
   showDemoData: boolean;
 }
 
-/** The background loop that picks queued runs up, and the one command that puts the demo back how it was. */
+/**
+ * The background loop that picks queued runs up, and the one way to put the demo back how it was. Written
+ * for the workspace owner; the env vars and the command live in the operator notes.
+ */
 export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) {
   return (
     <div className="space-y-10">
@@ -20,13 +23,7 @@ export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) 
         <SettingsGroup
           title="Background worker"
           description="The loop that picks up queued runs and fires scheduled ones."
-          footer={
-            <>
-              Tune with <Mono>EXECUTOR_POLL_MS</Mono>, <Mono>EXECUTOR_CONCURRENCY</Mono>,{" "}
-              <Mono>SCHEDULER_TICK_MS</Mono> and <Mono>EXECUTOR_STALE_LOCK_MS</Mono>; set{" "}
-              <Mono>EXECUTOR_DISABLED=true</Mono> to pause it.
-            </>
-          }
+          footer="Set on the server for the whole platform, so every workspace keeps the same pace."
         >
           <SettingsRow
             label={executor.enabled ? "Picking up work" : "Paused"}
@@ -37,7 +34,7 @@ export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) 
             }
           >
             <StatusLine tone={executor.enabled ? "success" : "attention"}>
-              {executor.enabled ? "Running" : "Disabled"}
+              {executor.enabled ? "Running" : "Paused"}
             </StatusLine>
           </SettingsRow>
           <SettingsRow label="Checks for work">
@@ -57,7 +54,7 @@ export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) 
         </SettingsGroup>
       ) : (
         <p className="text-footnote max-w-[62ch] text-pretty text-muted-foreground px-1">
-          The background worker is tuned on the server by your workspace owner.
+          The background worker is set up on the server by whoever runs the platform.
         </p>
       )}
 
@@ -65,15 +62,34 @@ export function RuntimeSection({ executor, showDemoData }: RuntimeSectionProps) 
         <SettingsGroup
           title="Demo data"
           description="Three workers with three weeks of history, ready to hire, review and replace."
-          footer="Runs, deliverables, evaluations and usage created since the last seed are removed, and so are tool keys set here. The ids stay the same, so you stay signed in."
+          footer="Starting over removes the runs, deliverables, reviews and usage added since the demo was set up, and any tool keys saved here. Nobody is signed out."
         >
-          <SettingsRow label="Put the demo workspace back" hint="Run this from a terminal in the project folder.">
-            <span className="flex items-center gap-2 rounded-lg bg-muted py-1.5 pr-1.5 pl-3">
-              <span className="font-mono text-[13px]">{SEED_COMMAND}</span>
-              <CopyButton value={SEED_COMMAND} />
-            </span>
-          </SettingsRow>
+          <SettingsRow
+            label="Start the demo over"
+            hint="Puts the three workers and their history back the way they began. Whoever runs the server does this from the server."
+          />
         </SettingsGroup>
+      ) : null}
+
+      {executor || showDemoData ? (
+        <OperatorNotes>
+          {executor ? (
+            <p>
+              Tune the worker with <Mono>EXECUTOR_POLL_MS</Mono>, <Mono>EXECUTOR_CONCURRENCY</Mono>,{" "}
+              <Mono>SCHEDULER_TICK_MS</Mono> and <Mono>EXECUTOR_STALE_LOCK_MS</Mono>; set{" "}
+              <Mono>EXECUTOR_DISABLED=true</Mono> to pause it.
+            </p>
+          ) : null}
+          {showDemoData ? (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>To start the demo over, run this from a terminal in the project folder:</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted py-1 pr-1 pl-2.5">
+                <Mono>{SEED_COMMAND}</Mono>
+                <CopyButton value={SEED_COMMAND} />
+              </span>
+            </p>
+          ) : null}
+        </OperatorNotes>
       ) : null}
     </div>
   );

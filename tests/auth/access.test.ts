@@ -1,7 +1,12 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SIGNED_IN_PATH,
+  PROTECTED_PATHS,
+  PUBLIC_PATHS,
   SESSION_EXPIRED_SIGN_IN_PATH,
+  SIGN_IN_PATH,
   decideAccess,
   safeCallbackUrl,
   type AccessRequest,
@@ -35,10 +40,32 @@ describe("decideAccess — signed out", () => {
     expect(decideAccess(request({ pathname: "/invite/abc123", method: "POST" }))).toEqual({ kind: "allow" });
   });
 
-  it("does not let look-alikes of the public paths through", () => {
-    expect(decideAccess(request({ pathname: "/invited" })).kind).toBe("redirect");
-    expect(decideAccess(request({ pathname: "/sign-upgrade" })).kind).toBe("redirect");
+  it("lets the generated share image through: link-preview crawlers never carry a cookie", () => {
+    for (const pathname of ["/opengraph-image", "/opengraph-image/1", "/twitter-image", "/icon", "/apple-icon"]) {
+      expect(decideAccess(request({ pathname }))).toEqual({ kind: "allow" });
+      expect(decideAccess(request({ pathname, isAuthenticated: true }))).toEqual({ kind: "allow" });
+    }
+    // Only the root-level images are public: a per-route image could carry workspace data.
+    expect(decideAccess(request({ pathname: "/workers/w1/opengraph-image" }))).toEqual({
+      kind: "redirect",
+      to: `/sign-in?callbackUrl=${encodeURIComponent("/workers/w1/opengraph-image")}`,
+    });
+  });
+
+  it("lets a URL outside the app fall through to the 404 page instead of asking the visitor to sign in first", () => {
+    for (const pathname of ["/nope", "/nope/deeper", "/invited", "/sign-upgrade", "/workforced"]) {
+      expect(decideAccess(request({ pathname, search: "?x=1" }))).toEqual({ kind: "allow" });
+    }
+    // Inside the app the middleware cannot tell a missing id from a real one, so the sign-in round trip stays.
+    expect(decideAccess(request({ pathname: "/workers/nope" }))).toEqual({
+      kind: "redirect",
+      to: `/sign-in?callbackUrl=${encodeURIComponent("/workers/nope")}`,
+    });
+  });
+
+  it("matches prefixes on segment boundaries: look-alikes of the API probes stay 401", () => {
     expect(decideAccess(request({ pathname: "/api/healthz" }))).toEqual({ kind: "unauthorized" });
+    expect(decideAccess(request({ pathname: "/workforce/" })).kind).toBe("redirect");
   });
 
   it("answers /api/* with 401 instead of a redirect", () => {
@@ -53,9 +80,8 @@ describe("decideAccess — signed out", () => {
     });
   });
 
-  it("does not treat look-alike paths as public", () => {
+  it("does not treat look-alikes of Auth.js' endpoints as public", () => {
     expect(decideAccess(request({ pathname: "/api/authentic" }))).toEqual({ kind: "unauthorized" });
-    expect(decideAccess(request({ pathname: "/sign-in-help" })).kind).toBe("redirect");
   });
 
   it("allows the sign-in page and its server-action POST", () => {
@@ -79,6 +105,10 @@ describe("decideAccess — signed in", () => {
     expect(decideAccess(request({ pathname: "/sign-up", method: "POST", isAuthenticated: true }))).toEqual({
       kind: "allow",
     });
+  });
+
+  it("does not bounce a signed-in visitor off a look-alike of /sign-in", () => {
+    expect(decideAccess(request({ pathname: "/sign-in-help", isAuthenticated: true }))).toEqual({ kind: "allow" });
   });
 
   it("leaves an invite link reachable while signed in (they may be joining a second workspace)", () => {
@@ -140,5 +170,52 @@ describe("safeCallbackUrl", () => {
     expect(safeCallbackUrl(null)).toBe(DEFAULT_SIGNED_IN_PATH);
     expect(safeCallbackUrl(undefined)).toBe(DEFAULT_SIGNED_IN_PATH);
     expect(safeCallbackUrl(["/approvals"])).toBe(DEFAULT_SIGNED_IN_PATH);
+  });
+});
+
+/**
+ * The top-level URL segments that exist on disk: every directory under `src/app`, looking through route
+ * groups `(name)` and skipping private folders `_name`. A new segment must be classified in access.ts before
+ * this passes, because an unclassified path now falls through to the 404 page instead of the sign-in gate.
+ */
+function routeSegmentsOnDisk(): string[] {
+  const segments = new Set<string>();
+  const visit = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
+      if (/^\(.+\)$/.test(entry.name)) visit(path.join(dir, entry.name));
+      else segments.add(`/${entry.name}`);
+    }
+  };
+  visit(path.resolve(import.meta.dirname, "../../src/app"));
+  return [...segments].sort();
+}
+
+/** Root-level metadata image files, i.e. `opengraph-image.tsx` → "/opengraph-image". */
+function metadataImageRoutesOnDisk(): string[] {
+  return readdirSync(path.resolve(import.meta.dirname, "../../src/app"))
+    .map((name) => /^(opengraph-image|twitter-image|icon|apple-icon)\d*\.[jt]sx?$/.exec(name)?.[1])
+    .filter((route): route is string => Boolean(route))
+    .map((route) => `/${route}`);
+}
+
+describe("decideAccess — every route on disk is classified", () => {
+  const classified: readonly string[] = [...PUBLIC_PATHS, ...PROTECTED_PATHS, SIGN_IN_PATH, "/api"];
+
+  it("names every top-level segment under src/app as public, signed-out-only, protected or API", () => {
+    const segments = routeSegmentsOnDisk();
+    expect(segments.length).toBeGreaterThan(5);
+    expect(segments.filter((segment) => !classified.includes(segment))).toEqual([]);
+  });
+
+  it("lists no protected prefix that has no route behind it", () => {
+    const segments = routeSegmentsOnDisk();
+    expect(PROTECTED_PATHS.filter((base) => !segments.includes(base))).toEqual([]);
+  });
+
+  it("keeps every generated share image / icon beside the root layout public", () => {
+    const images = metadataImageRoutesOnDisk();
+    expect(images).toContain("/opengraph-image");
+    for (const pathname of images) expect(decideAccess(request({ pathname }))).toEqual({ kind: "allow" });
   });
 });

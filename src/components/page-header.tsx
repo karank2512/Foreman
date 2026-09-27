@@ -51,14 +51,21 @@ export function PageHeader({
           {deep.map((crumb, index) => (
             <span key={`${crumb.label}-${index}`} className="flex items-center gap-1.5">
               {index > 0 ? <span aria-hidden="true">›</span> : null}
-              <Link href={crumb.href ?? "#"} className="rounded-sm text-link outline-none hover:underline">
+              <Link
+                href={crumb.href ?? "#"}
+                className="rounded-sm text-link outline-none hover:underline max-md:-my-3.5 max-md:py-3.5"
+              >
                 {crumb.label}
               </Link>
             </span>
           ))}
         </nav>
       ) : href ? (
-        <Link href={href} className="w-fit rounded-sm text-callout text-link outline-none hover:underline">
+        // Under `md` the padding grows the tap box to 44px; the negative margin keeps the line where it was.
+        <Link
+          href={href}
+          className="w-fit rounded-sm text-callout text-link outline-none hover:underline max-md:-my-3.5 max-md:py-3.5"
+        >
           ‹ {label}
         </Link>
       ) : null}

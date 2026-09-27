@@ -23,8 +23,8 @@ export default function UsageLoading() {
               <Skeleton className="h-12 w-44 rounded-lg" />
               <Skeleton className="h-4 w-36 rounded-lg" />
             </div>
-            <div className="grid grid-cols-3 gap-px bg-border lg:grid-cols-1">
-              {Array.from({ length: 3 }, (_, i) => (
+            <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-1">
+              {Array.from({ length: 2 }, (_, i) => (
                 <div key={i} className="space-y-2 bg-card p-5 sm:p-6">
                   <Skeleton className="h-3.5 w-16 rounded-lg" />
                   <Skeleton className="h-5 w-20 rounded-lg" />

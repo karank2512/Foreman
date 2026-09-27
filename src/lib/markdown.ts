@@ -92,6 +92,22 @@ const MAX_SPAN = 2_000;
 /** Nested inline structures recurse; a crafted `[[[[…]]]]` must not exhaust the stack. */
 const MAX_INLINE_DEPTH = 24;
 
+/**
+ * Ceiling on the characters the inline scanner may look ahead in ONE document. `MAX_SPAN` bounds a single
+ * opener, but nothing stopped a document at the cap from being 200,000 openers that each fail after a full
+ * window: `"[".repeat(200_000)` cost 0.8 s of the SSR event loop. Real content spends a handful of characters
+ * per delimiter — a document full of links scans roughly its own length once — so this is never reached by
+ * anything a worker legitimately writes. Past it, the remaining delimiters are plain text.
+ */
+const MAX_INLINE_SCAN = 10_000_000;
+
+/** Shared by every inline scan of one document (paragraphs, cells, nested labels) so the ceiling is per document. */
+interface ScanBudget {
+  remaining: number;
+}
+
+const newScanBudget = (): ScanBudget => ({ remaining: MAX_INLINE_SCAN });
+
 function matchAt(re: RegExp, src: string, index: number): RegExpExecArray | null {
   re.lastIndex = index;
   return re.exec(src);
@@ -113,10 +129,17 @@ function pushText(out: InlineNode[], value: string): void {
 
 /**
  * Index of the closing `delim` after `from`, skipping escapes and code spans. -1 when there is none within
- * `MAX_SPAN` characters.
+ * `MAX_SPAN` characters or the document's scan budget is spent. The characters looked at are charged to the
+ * budget.
  */
-function findClosing(src: string, from: number, delim: string): number {
-  const limit = Math.min(src.length, from + MAX_SPAN);
+function findClosing(src: string, from: number, delim: string, budget: ScanBudget): number {
+  const limit = Math.min(src.length, from + MAX_SPAN, from + budget.remaining);
+  const close = scanClosing(src, from, limit, delim);
+  budget.remaining -= (close === -1 ? limit : Math.min(close, limit)) - from;
+  return close;
+}
+
+function scanClosing(src: string, from: number, limit: number, delim: string): number {
   let i = from;
   while (i < limit) {
     const ch = src[i];
@@ -153,9 +176,13 @@ function findClosing(src: string, from: number, delim: string): number {
   return -1;
 }
 
-/** Matches `[label](target "title")` at `start` (which points at `[`). */
-function matchLink(src: string, start: number): { label: string; target: string; end: number } | null {
-  const labelLimit = Math.min(src.length, start + MAX_SPAN);
+/**
+ * Matches `[label](target "title")` at `start` (which points at `[`). Both scans are clamped to the document's
+ * remaining budget and charged to it: a failed `[` costs up to `MAX_SPAN` characters and consumes only itself,
+ * which is what made a document of nothing but `[` quadratic.
+ */
+function matchLink(src: string, start: number, budget: ScanBudget): { label: string; target: string; end: number } | null {
+  const labelLimit = Math.min(src.length, start + MAX_SPAN, start + budget.remaining);
   let depth = 0;
   let i = start;
   for (; i < labelLimit; i++) {
@@ -170,8 +197,9 @@ function matchLink(src: string, start: number): { label: string; target: string;
       if (depth === 0) break;
     }
   }
+  budget.remaining -= Math.min(i, labelLimit) - start;
   if (i >= labelLimit || src[i + 1] !== "(") return null;
-  const targetLimit = Math.min(src.length, i + MAX_SPAN);
+  const targetLimit = Math.min(src.length, i + MAX_SPAN, i + budget.remaining);
   let parens = 0;
   let j = i + 1;
   for (; j < targetLimit; j++) {
@@ -180,14 +208,15 @@ function matchLink(src: string, start: number): { label: string; target: string;
       j += 1;
       continue;
     }
-    if (ch === "\n") return null;
+    if (ch === "\n") break;
     if (ch === "(") parens += 1;
     else if (ch === ")") {
       parens -= 1;
       if (parens === 0) break;
     }
   }
-  if (j >= targetLimit) return null;
+  budget.remaining -= Math.min(j, targetLimit) - i;
+  if (j >= targetLimit || src[j] === "\n") return null;
   const inside = src.slice(i + 2, j).trim();
   // Drop an optional title: [x](https://a.example "Title")
   const target = inside.replace(/\s+("[^"]*"|'[^']*')\s*$/, "").replace(/^<(.*)>$/, "$1");
@@ -209,7 +238,7 @@ function emphasisCanClose(src: string, closeIdx: number, delim: string): boolean
   return true;
 }
 
-export function parseInline(src: string, depth = 0): InlineNode[] {
+export function parseInline(src: string, depth = 0, budget: ScanBudget = newScanBudget()): InlineNode[] {
   const out: InlineNode[] = [];
   if (depth > MAX_INLINE_DEPTH) return src === "" ? out : [{ type: "text", value: src }];
   let i = 0;
@@ -273,9 +302,9 @@ export function parseInline(src: string, depth = 0): InlineNode[] {
       let matched = false;
       for (const delim of candidates) {
         if (!src.startsWith(delim, i) || !emphasisCanOpen(src, i, delim)) continue;
-        const close = findClosing(src, i + delim.length, delim);
+        const close = findClosing(src, i + delim.length, delim, budget);
         if (close === -1 || close === i + delim.length || !emphasisCanClose(src, close, delim)) continue;
-        const inner = parseInline(src.slice(i + delim.length, close), depth + 1);
+        const inner = parseInline(src.slice(i + delim.length, close), depth + 1, budget);
         if (delim === "~~") out.push({ type: "del", children: inner });
         else if (delim.length === 3) out.push({ type: "strong", children: [{ type: "em", children: inner }] });
         else if (delim.length === 2) out.push({ type: "strong", children: inner });
@@ -295,10 +324,10 @@ export function parseInline(src: string, depth = 0): InlineNode[] {
     // Links (images degrade to a link on their alt text — deliverables never embed remote images)
     if (ch === "[" || (ch === "!" && src[i + 1] === "[")) {
       const start = ch === "!" ? i + 1 : i;
-      const link = matchLink(src, start);
+      const link = matchLink(src, start, budget);
       if (link) {
         const href = sanitizeHref(link.target);
-        const children = parseInline(link.label, depth + 1);
+        const children = parseInline(link.label, depth + 1, budget);
         if (href) out.push({ type: "link", href, children: children.length > 0 ? children : [{ type: "text", value: href }] });
         else out.push(...children);
         i = link.end;
@@ -491,7 +520,7 @@ function startsNewBlock(lines: string[], i: number): boolean {
   );
 }
 
-function parseList(lines: string[], start: number): { node: BlockNode; next: number } {
+function parseList(lines: string[], start: number, budget: ScanBudget): { node: BlockNode; next: number } {
   const first = LIST_ITEM.exec(lines[start] as string) as RegExpExecArray;
   const baseIndent = (first[1] as string).length;
   const ordered = /\d/.test(first[2] as string);
@@ -552,7 +581,7 @@ function parseList(lines: string[], start: number): { node: BlockNode; next: num
       checked = task[1] !== " ";
       text = text.slice(task[0].length);
     }
-    items.push({ checked, children: parseInline(text), blocks: parseBlocks(body) });
+    items.push({ checked, children: parseInline(text, 0, budget), blocks: parseBlocks(body, budget) });
 
     // Blank lines between sibling items are fine ("loose" lists).
     let k = i;
@@ -564,7 +593,8 @@ function parseList(lines: string[], start: number): { node: BlockNode; next: num
   return { node: { type: "list", ordered, start: startNumber, items }, next: i };
 }
 
-function parseTable(lines: string[], start: number): { node: BlockNode; next: number } {
+function parseTable(lines: string[], start: number, budget: ScanBudget): { node: BlockNode; next: number } {
+  const cell = (text: string): InlineNode[] => parseInline(text, 0, budget);
   const headerCells = splitTableRow(lines[start] as string);
   const align: TableAlign[] = splitTableRow(lines[start + 1] as string).map((cell) => {
     const left = cell.startsWith(":");
@@ -579,13 +609,13 @@ function parseTable(lines: string[], start: number): { node: BlockNode; next: nu
     const cells = splitTableRow(lines[i] as string);
     // Normalize ragged rows to the header width so the renderer can rely on a rectangular table.
     const normalized = headerCells.map((_, col) => cells[col] ?? "");
-    rows.push(normalized.map(parseInline));
+    rows.push(normalized.map(cell));
     i += 1;
   }
-  return { node: { type: "table", align, header: headerCells.map(parseInline), rows }, next: i };
+  return { node: { type: "table", align, header: headerCells.map(cell), rows }, next: i };
 }
 
-function parseBlocks(lines: string[]): BlockNode[] {
+function parseBlocks(lines: string[], budget: ScanBudget): BlockNode[] {
   const blocks: BlockNode[] = [];
   let i = 0;
 
@@ -598,7 +628,7 @@ function parseBlocks(lines: string[]): BlockNode[] {
 
     if (tooLongForBlockScan(line)) {
       // One very long line is paragraph text, whatever it starts with.
-      blocks.push({ type: "paragraph", children: parseInline(line.trimEnd()) });
+      blocks.push({ type: "paragraph", children: parseInline(line.trimEnd(), 0, budget) });
       i += 1;
       continue;
     }
@@ -626,7 +656,7 @@ function parseBlocks(lines: string[]): BlockNode[] {
 
     const heading = matchHeading(line);
     if (heading) {
-      blocks.push({ type: "heading", level: heading.level, children: parseInline(heading.text) });
+      blocks.push({ type: "heading", level: heading.level, children: parseInline(heading.text, 0, budget) });
       i += 1;
       continue;
     }
@@ -637,19 +667,19 @@ function parseBlocks(lines: string[]): BlockNode[] {
         quoted.push((lines[i] as string).replace(BLOCKQUOTE, ""));
         i += 1;
       }
-      blocks.push({ type: "blockquote", children: parseBlocks(quoted) });
+      blocks.push({ type: "blockquote", children: parseBlocks(quoted, budget) });
       continue;
     }
 
     if (isTableStart(lines, i)) {
-      const table = parseTable(lines, i);
+      const table = parseTable(lines, i, budget);
       blocks.push(table.node);
       i = table.next;
       continue;
     }
 
     if (LIST_ITEM.test(line)) {
-      const list = parseList(lines, i);
+      const list = parseList(lines, i, budget);
       blocks.push(list.node);
       i = list.next;
       continue;
@@ -662,7 +692,7 @@ function parseBlocks(lines: string[]): BlockNode[] {
       i += 1;
     }
     // Keep trailing double-spaces on inner lines (hard breaks) but not at the very end.
-    blocks.push({ type: "paragraph", children: parseInline(paragraph.join("\n").trimEnd()) });
+    blocks.push({ type: "paragraph", children: parseInline(paragraph.join("\n").trimEnd(), 0, budget) });
   }
 
   return blocks;
@@ -678,5 +708,5 @@ export function parseMarkdown(source: string | null | undefined): BlockNode[] {
   const capped =
     source.length > MAX_MARKDOWN_CHARS ? `${source.slice(0, MAX_MARKDOWN_CHARS)}\n\n${TRUNCATION_NOTICE}` : source;
   const lines = capped.replace(/\r\n?/g, "\n").replace(/\t/g, "    ").split("\n");
-  return parseBlocks(lines);
+  return parseBlocks(lines, newScanBudget());
 }

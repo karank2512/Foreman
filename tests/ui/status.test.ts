@@ -106,9 +106,13 @@ describe("WorkerAvatar helpers", () => {
     const source = await import("node:fs/promises").then((fs) =>
       fs.readFile(new URL("../../src/components/worker-avatar.tsx", import.meta.url), "utf8"),
     );
+    // Each token maps to a full static `bg-<hue>-100 text-<hue>-[78]00` pair. The hue may differ from the token
+    // (violet/indigo are frozen domain names that render in non-purple pastels), but it is never purple.
     for (const color of AVATAR_COLORS) {
-      expect(source, color).toContain(`bg-${color}-100`);
-      expect(source, color).toMatch(new RegExp(`text-${color}-[78]00`));
+      const entry = source.match(new RegExp(`\\b${color}: "bg-([a-z]+)-100 text-([a-z]+)-[78]00"`));
+      expect(entry, color).not.toBeNull();
+      expect(entry?.[1], color).toBe(entry?.[2]);
+      expect(entry?.[1], color).not.toMatch(/^(violet|indigo|purple|fuchsia)$/);
     }
   });
 });

@@ -69,7 +69,7 @@ export function LocalNav({ title, items, action, watchSelector = "h1", className
 
         <div
           ref={list}
-          className="-mx-1 flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [scroll-snap-type:x_proximity] sm:justify-end [&::-webkit-scrollbar]:hidden"
+          className="-mx-1 flex h-full min-w-0 flex-1 items-center gap-5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [scroll-snap-type:x_proximity] sm:justify-end [&::-webkit-scrollbar]:hidden"
         >
           {items.map((item) => (
             <Link
@@ -77,7 +77,8 @@ export function LocalNav({ title, items, action, watchSelector = "h1", className
               href={item.href}
               aria-current={item.active ? "page" : undefined}
               className={cn(
-                "shrink-0 rounded-sm text-footnote whitespace-nowrap outline-none [scroll-snap-align:center]",
+                // Full-height anchors: the whole 52px bar is the hit area, not just the 18px of text.
+                "flex h-full shrink-0 items-center rounded-sm text-footnote whitespace-nowrap outline-none [scroll-snap-align:center]",
                 item.active ? "font-semibold text-foreground" : "font-medium text-foreground/72 hover:text-foreground",
               )}
             >

@@ -26,6 +26,19 @@ function keyOf(item: AttentionItem): string {
   }
 }
 
+/**
+ * The separator between two facts on a meta line. The line never wraps (see `Row`), so the dot can't be left
+ * hanging at the end of one line with its fact on the next.
+ */
+function Sep() {
+  return <span aria-hidden="true">{" · "}</span>;
+}
+
+/** A quote or error excerpt: clipped with an ellipsis on the one meta line, with the whole text on hover. */
+function Excerpt({ text, quote = false }: { text: string; quote?: boolean }) {
+  return <span title={text}>{quote ? `“${text}”` : text}</span>;
+}
+
 function Row({
   item,
   sentence,
@@ -49,9 +62,10 @@ function Row({
           <Link href={`/workers/${item.workerId}`} className="shrink-0 rounded-full outline-none sm:hidden">
             <WorkerAvatar name={item.workerName} color={item.avatarColor} size="sm" />
           </Link>
-          <div className="min-w-0 space-y-0.5">
+          <div className="min-w-0 flex-1 space-y-0.5">
             <p className="text-body-app text-pretty text-foreground">{sentence}</p>
-            <p className="text-footnote flex flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground">{meta}</p>
+            {/* One line, clipped with an ellipsis: metadata never wraps under the sentence it qualifies. */}
+            <p className="text-footnote truncate text-muted-foreground">{meta}</p>
           </div>
         </div>
         {preview}
@@ -70,10 +84,8 @@ function AttentionRow({ item, blockedReason }: { item: AttentionItem; blockedRea
           sentence={requestSentence(item.workerName, item.title)}
           meta={
             <>
-              <span>
-                Asked <RelativeTime iso={item.requestedAt} />
-              </span>
-              <span aria-hidden="true">·</span>
+              Asked <RelativeTime iso={item.requestedAt} />
+              <Sep />
               <Link href={`/runs/${item.runId}`} className="outline-none hover:text-foreground">
                 the run is paused
               </Link>
@@ -99,12 +111,12 @@ function AttentionRow({ item, blockedReason }: { item: AttentionItem; blockedRea
           sentence={`${item.workerName}'s recent work needs a look`}
           meta={
             <>
-              <span className="text-pretty text-warning">
-                {item.reason ?? "Their score has slipped below the healthy range."}
+              <span className="text-warning">
+                <Excerpt text={item.reason ?? "Their score has slipped below the healthy range."} />
               </span>
               {item.score !== null ? (
                 <>
-                  <span aria-hidden="true">·</span>
+                  <Sep />
                   <span className="tabular-nums">score {Math.round(item.score)}</span>
                 </>
               ) : null}
@@ -127,8 +139,8 @@ function AttentionRow({ item, blockedReason }: { item: AttentionItem; blockedRea
               <RelativeTime iso={item.at} />
               {item.error ? (
                 <>
-                  <span aria-hidden="true">·</span>
-                  <span className="line-clamp-1 text-pretty">{item.error}</span>
+                  <Sep />
+                  <Excerpt text={item.error} />
                 </>
               ) : null}
             </>
@@ -141,24 +153,26 @@ function AttentionRow({ item, blockedReason }: { item: AttentionItem; blockedRea
         />
       );
     case "deliverable_rejected":
+      // Told from the worker's side: sending it back is done; what's open is that nothing accepted has come
+      // in since (the query drops the row once it has). Rejecting queues no revision run, so no promise of one.
       return (
         <Row
           item={item}
-          sentence={`You sent “${item.title}” back to ${item.workerName}`}
+          sentence={`${item.workerName} still owes you a better “${item.title}”`}
           meta={
             <>
-              <RelativeTime iso={item.at} />
+              You sent it back <RelativeTime iso={item.at} />
               {item.feedback ? (
                 <>
-                  <span aria-hidden="true">·</span>
-                  <span className="line-clamp-1 text-pretty">“{item.feedback}”</span>
+                  <Sep />
+                  <Excerpt text={item.feedback} quote />
                 </>
               ) : null}
             </>
           }
           action={
             <Button variant="secondary" className="max-sm:h-11 max-sm:w-full" asChild>
-              <Link href={`/deliverables/${item.deliverableId}`}>Open</Link>
+              <Link href={`/deliverables/${item.deliverableId}`}>See feedback</Link>
             </Button>
           }
         />

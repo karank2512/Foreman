@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { LogoGlyph } from "@/components/shell/logo";
 import { INK_BAND_ID } from "./section";
@@ -32,6 +33,10 @@ export interface MarketingNavProps {
 /**
  * The frosted 48px marketing bar. Client-side for three reasons only: the mobile panel, the Escape/focus
  * handling, and the colour flip while the dark band sits under the bar.
+ *
+ * The mobile panel is portaled to `document.body`. The bar's `backdrop-filter` turns the <header> into the
+ * containing block for any `position: fixed` descendant, so a panel rendered inside it would resolve
+ * `top`/`bottom` against the 48px bar (a 64px strip) instead of the viewport.
  */
 export function MarketingNav({ signedIn, showSections = true }: MarketingNavProps) {
   const [onInk, setOnInk] = useState(false);
@@ -133,7 +138,7 @@ export function MarketingNav({ signedIn, showSections = true }: MarketingNavProp
       )}
     >
       <div className="mx-auto flex h-full w-full max-w-(--container-app) items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-sm outline-none" onClick={close}>
+        <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-sm outline-none" onClick={close}>
           <LogoGlyph className="text-current" />
           <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap">
             <span className="sm:hidden">AI Staffing</span>
@@ -206,70 +211,73 @@ export function MarketingNav({ signedIn, showSections = true }: MarketingNavProp
         </button>
       </div>
 
-      {open ? (
-        <div
-          id="marketing-menu"
-          ref={panel}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu"
-          className={cn(
-            "fixed inset-x-0 top-(--nav-height) bottom-0 z-40 flex flex-col overflow-y-auto bg-[rgb(251_251_253_/_0.96)] px-4 pt-8 pb-8 text-foreground backdrop-blur-[20px] backdrop-saturate-[180%] transition-opacity duration-[280ms] ease-out md:hidden",
-            entered ? "opacity-100" : "opacity-0",
-          )}
-        >
-          {showSections ? (
-            <nav aria-label="Sections" className="flex flex-col gap-3">
-              {SECTION_LINKS.map((link) => {
-                const motion = stagger();
-                return (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={close}
-                    className={cn(
-                      "flex min-h-11 w-fit items-center text-[28px] leading-tight font-semibold tracking-[-0.015em]",
-                      motion.className,
-                    )}
-                    style={motion.style}
-                  >
-                    {link.label}
-                  </a>
-                );
-              })}
-            </nav>
-          ) : null}
+      {open
+        ? createPortal(
+            <div
+              id="marketing-menu"
+              ref={panel}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              className={cn(
+                "fixed inset-x-0 top-(--nav-height) bottom-0 z-40 flex flex-col overflow-y-auto bg-[rgb(251_251_253_/_0.96)] px-4 pt-8 pb-8 text-foreground backdrop-blur-[20px] backdrop-saturate-[180%] transition-opacity duration-[280ms] ease-out md:hidden",
+                entered ? "opacity-100" : "opacity-0",
+              )}
+            >
+              {showSections ? (
+                <nav aria-label="Sections" className="flex flex-col gap-3">
+                  {SECTION_LINKS.map((link) => {
+                    const motion = stagger();
+                    return (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        onClick={close}
+                        className={cn(
+                          "flex min-h-11 w-fit items-center text-[28px] leading-tight font-semibold tracking-[-0.015em]",
+                          motion.className,
+                        )}
+                        style={motion.style}
+                      >
+                        {link.label}
+                      </a>
+                    );
+                  })}
+                </nav>
+              ) : null}
 
-          <div className="mt-auto pt-10">
-            {signedIn ? (
-              <Link
-                href={DEFAULT_SIGNED_IN_PATH}
-                onClick={close}
-                className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-[17px] font-medium text-primary-foreground transition-colors duration-200 ease-standard hover:bg-primary-hover"
-              >
-                Open workforce
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href={SIGN_UP_PATH}
-                  onClick={close}
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-[17px] font-medium text-primary-foreground transition-colors duration-200 ease-standard hover:bg-primary-hover"
-                >
-                  Get started
-                </Link>
-                <Link
-                  href={SIGN_IN_PATH}
-                  onClick={close}
-                  className="mt-3 flex h-12 w-full items-center justify-center rounded-full bg-secondary text-[17px] font-medium text-secondary-foreground transition-colors duration-200 ease-standard hover:bg-secondary-hover"
-                >
-                  Sign in
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+              <div className="mt-auto pt-10">
+                {signedIn ? (
+                  <Link
+                    href={DEFAULT_SIGNED_IN_PATH}
+                    onClick={close}
+                    className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-[17px] font-medium text-primary-foreground transition-colors duration-200 ease-standard hover:bg-primary-hover"
+                  >
+                    Open workforce
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href={SIGN_UP_PATH}
+                      onClick={close}
+                      className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-[17px] font-medium text-primary-foreground transition-colors duration-200 ease-standard hover:bg-primary-hover"
+                    >
+                      Get started
+                    </Link>
+                    <Link
+                      href={SIGN_IN_PATH}
+                      onClick={close}
+                      className="mt-3 flex h-12 w-full items-center justify-center rounded-full bg-secondary text-[17px] font-medium text-secondary-foreground transition-colors duration-200 ease-standard hover:bg-secondary-hover"
+                    >
+                      Sign in
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }

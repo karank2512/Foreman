@@ -2,12 +2,13 @@ import Link from "next/link";
 import { SIGN_IN_PATH, SIGN_UP_PATH } from "@/server/auth";
 
 /**
- * Only destinations that exist are links. "About", "Contact", "Help center", "Status", "Privacy" and "Terms"
- * are not built yet, so they render as plain text rather than as promises that 404.
+ * Only destinations that exist are listed. "About", "Contact", "Help center", "Status", "Privacy" and "Terms"
+ * are not built yet, so they are omitted entirely rather than rendered as grey words that look like links and
+ * do nothing when tapped (docs/DESIGN.md: "Don't link pages that don't exist. Omit them until built.").
  */
 interface FooterItem {
   label: string;
-  href?: string;
+  href: string;
 }
 
 const COLUMNS: { heading: string; items: FooterItem[] }[] = [
@@ -26,15 +27,11 @@ const COLUMNS: { heading: string; items: FooterItem[] }[] = [
       { label: "Create account", href: SIGN_UP_PATH },
     ],
   },
-  {
-    heading: "Company",
-    items: [{ label: "About" }, { label: "Contact" }],
-  },
-  {
-    heading: "Legal",
-    items: [{ label: "Privacy" }, { label: "Terms" }],
-  },
 ];
+
+// 12px text on a 44px row (and never narrower than 44px) for thumbs; from 640px up the rows tighten back to
+// a 26px pitch.
+const ITEM_CLASS = "inline-flex min-h-11 min-w-11 items-center hover:text-foreground hover:underline sm:min-h-6";
 
 export function SiteFooter({ simulated }: { simulated: boolean }) {
   const year = new Date().getFullYear();
@@ -46,21 +43,17 @@ export function SiteFooter({ simulated }: { simulated: boolean }) {
           {COLUMNS.map((column) => (
             <div key={column.heading}>
               <h2 className="text-[12px] leading-4 font-semibold text-foreground">{column.heading}</h2>
-              <ul className="mt-3 space-y-2.5">
+              <ul className="mt-3 space-y-1 sm:space-y-0.5">
                 {column.items.map((item) => (
                   <li key={item.label} className="text-[12px] leading-4">
-                    {item.href ? (
-                      item.href.startsWith("#") ? (
-                        <a href={item.href} className="hover:text-foreground hover:underline">
-                          {item.label}
-                        </a>
-                      ) : (
-                        <Link href={item.href} className="hover:text-foreground hover:underline">
-                          {item.label}
-                        </Link>
-                      )
+                    {item.href.startsWith("#") ? (
+                      <a href={item.href} className={ITEM_CLASS}>
+                        {item.label}
+                      </a>
                     ) : (
-                      <span>{item.label}</span>
+                      <Link href={item.href} className={ITEM_CLASS}>
+                        {item.label}
+                      </Link>
                     )}
                   </li>
                 ))}

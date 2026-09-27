@@ -17,7 +17,9 @@ import { DEFAULT_SETTINGS_SECTION, parseSettingsSection, settingsSection } from 
 
 export const metadata: Metadata = { title: "Settings" };
 
-const AUDIT_EVENT_LIMIT = 12;
+// The section folds runs of identical events into one row (a dozen sign-ins from one laptop), so it is
+// handed several times the rows it shows.
+const AUDIT_EVENT_LIMIT = 60;
 
 /**
  * The account area: one route, six sections, `?section=` deciding which. On a wide screen the rail is always
@@ -35,7 +37,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const auditWide = permissions["members.invite"];
 
   const [org, members, invitations, events] = await Promise.all([
-    active === "workspace" ? getOrgSettings(s.organizationId) : null,
+    active === "workspace" || active === "runtime" ? getOrgSettings(s.organizationId) : null,
     active === "members" || active === "security" ? listMembers(s.organizationId) : null,
     active === "members" ? listInvitations(s.organizationId) : null,
     active === "security"
@@ -109,7 +111,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               ) : null}
 
               {active === "runtime" ? (
-                <RuntimeSection executor={settings.operator?.executor ?? null} showDemoData={!config.isProduction} />
+                <RuntimeSection
+                  executor={settings.operator?.executor ?? null}
+                  showDemoData={!config.isProduction && org?.isDemo === true}
+                />
               ) : null}
             </div>
           </div>

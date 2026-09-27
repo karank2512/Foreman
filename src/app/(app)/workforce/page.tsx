@@ -127,14 +127,11 @@ export default async function WorkforcePage() {
             label="Spend this month"
             value={formatUsd(stats.spendThisMonthUsd)}
             trend={spendTrend(stats)}
+            // "Simulated" is said once, in the nav, and on generated artifacts — not under every number.
             hint={
-              stats.spendSimulated ? (
-                "Simulated — priced, not billed"
-              ) : (
-                <Link href="/usage" className="outline-none hover:text-foreground">
-                  See usage
-                </Link>
-              )
+              <Link href="/usage" className="outline-none hover:text-foreground">
+                See usage
+              </Link>
             }
           />
         </StatStrip>

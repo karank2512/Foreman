@@ -12,7 +12,52 @@ const INK = "#1d1d1f";
 const SECONDARY = "#6e6e73";
 const BLUE = "#0071e3";
 
+/**
+ * Inter is the one typeface the site ships, but next/font only ever downloads it as woff2, which the image
+ * renderer cannot read. So the two weights the card uses are fetched once per process from Google Fonts (the
+ * same source next/font uses at build time) in plain WOFF, which the renderer does accept, resolved through
+ * the stylesheet rather than a pinned file URL so a font version bump doesn't break the card. If the fetch
+ * fails — no egress, a timeout — the card renders in the renderer's default sans instead of failing the request.
+ */
+const INTER_CSS = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap";
+// A pre-woff2 browser signature makes the stylesheet list plain WOFF sources instead of woff2.
+const LEGACY_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:5.0) Gecko/20100101 Firefox/5.0";
+const FETCH_TIMEOUT_MS = 5_000;
+
+type FontFace = { name: "Inter"; data: ArrayBuffer; weight: 400 | 600; style: "normal" };
+
+let fontsPromise: Promise<FontFace[]> | undefined;
+
+async function fetchFonts(): Promise<FontFace[]> {
+  const css = await fetch(INTER_CSS, {
+    headers: { "User-Agent": LEGACY_UA },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!css.ok) return [];
+  const text = await css.text();
+  const faces: FontFace[] = [];
+  for (const weight of [400, 600] as const) {
+    const block = new RegExp(`font-weight:\\s*${weight};[^}]*?src:\\s*url\\((https://fonts\\.gstatic\\.com/[^)]+)\\)`).exec(text);
+    if (!block?.[1]) continue;
+    const file = await fetch(block[1], { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (!file.ok) continue;
+    faces.push({ name: "Inter", data: await file.arrayBuffer(), weight, style: "normal" });
+  }
+  return faces;
+}
+
+function loadFonts(): Promise<FontFace[]> {
+  fontsPromise ??= fetchFonts().catch(() => []);
+  return fontsPromise.then((faces) => {
+    // Don't cache a miss: a transient network failure shouldn't pin the fallback font for the process's life.
+    if (faces.length === 0) fontsPromise = undefined;
+    return faces;
+  });
+}
+
 export default async function OpengraphImage() {
+  const fonts = await loadFonts();
+
   return new ImageResponse(
     (
       <div
@@ -23,8 +68,10 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           backgroundColor: "#ffffff",
-          padding: "80px",
+          padding: "72px 80px",
           color: INK,
+          fontFamily: fonts.length > 0 ? "Inter" : undefined,
+          fontWeight: 400,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
@@ -45,13 +92,13 @@ export default async function OpengraphImage() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 88, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
+          <div style={{ fontSize: 104, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.02 }}>
             Describe the job.
           </div>
-          <div style={{ fontSize: 88, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
+          <div style={{ fontSize: 104, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.02 }}>
             Meet your new hire.
           </div>
-          <div style={{ marginTop: 32, fontSize: 32, color: SECONDARY, maxWidth: 900, lineHeight: 1.35 }}>
+          <div style={{ marginTop: 28, fontSize: 36, color: SECONDARY, maxWidth: 1000, lineHeight: 1.3 }}>
             Scope the work, hire an AI worker for it, review every deliverable.
           </div>
         </div>
@@ -62,6 +109,6 @@ export default async function OpengraphImage() {
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts },
   );
 }
