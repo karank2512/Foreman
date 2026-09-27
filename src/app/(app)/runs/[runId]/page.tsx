@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,20 +21,30 @@ import { RunMetaLine, RunProgressLine, RunProgressRail } from "./_components/liv
 import { RunActions, RunStickyActions } from "./_components/run-actions";
 import { RunLiveProvider } from "./_components/run-live";
 import { RunTimeline } from "./_components/run-timeline";
-import { TRIGGER_LABEL } from "./_components/step-meta";
+import { runHeading, TRIGGER_LABEL } from "./_components/step-meta";
 
-export const metadata: Metadata = { title: "Run" };
+type Params = { params: Promise<{ runId: string }> };
 
 /** Anchors sit below the global nav (48) + local nav (52), with air. */
 const ANCHOR = "scroll-mt-[116px]";
 
-async function load(organizationId: string, runId: string, role: Awaited<ReturnType<typeof requireSession>>["role"]): Promise<RunDetail> {
+/** generateMetadata and the page both need the detail view — one set of DB round trips per request. */
+const load = cache(async (runId: string): Promise<RunDetail | null> => {
+  const s = await requireSession();
   try {
-    return await getRunDetail(organizationId, runId, { role });
+    return await getRunDetail(s.organizationId, runId, { role: s.role });
   } catch (e) {
-    if (isAppError(e) && e.code === "NOT_FOUND") notFound();
+    if (isAppError(e) && e.code === "NOT_FOUND") return null;
     throw e;
   }
+});
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { runId } = await params;
+  const detail = await load(runId);
+  if (!detail) return { title: "Run" };
+  const { run } = detail.live;
+  return { title: `${runHeading(run.startedAt, run.createdAt)} · ${detail.worker.name}` };
 }
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -45,12 +56,13 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function RunPage({ params }: { params: Promise<{ runId: string }> }) {
+export default async function RunPage({ params }: Params) {
   const { runId } = await params;
-  const s = await requireSession();
-  const detail = await load(s.organizationId, runId, s.role);
+  const detail = await load(runId);
+  if (!detail) notFound();
   const { live, worker, job, version, permissions } = detail;
   const run = live.run;
+  const heading = runHeading(run.startedAt, run.createdAt);
 
   const stepDetails: Record<string, RunStepDetailView> = Object.fromEntries(detail.steps.map((step) => [step.id, step]));
   const firstDeliverable = detail.deliverables[0] ?? null;
@@ -70,11 +82,13 @@ export default async function RunPage({ params }: { params: Promise<{ runId: str
       <PageHeader
         backHref={`/workers/${worker.id}`}
         backLabel={worker.name}
-        title={job.title}
+        title={heading}
         description={
           <span className="flex flex-col gap-1.5">
             <RunMetaLine />
-            <span className="text-footnote text-muted-foreground">{staticFacts}</span>
+            <span className="text-footnote text-muted-foreground">
+              For <Link href={`/jobs/${job.id}`}>{job.title}</Link> · {staticFacts}
+            </span>
             <RunProgressLine workerName={worker.name} />
           </span>
         }
@@ -90,7 +104,7 @@ export default async function RunPage({ params }: { params: Promise<{ runId: str
       />
 
       <LocalNav
-        title={job.title}
+        title={heading}
         items={[
           { label: "Timeline", href: "#timeline", active: true },
           { label: "Deliverable", href: "#deliverable" },
@@ -99,8 +113,11 @@ export default async function RunPage({ params }: { params: Promise<{ runId: str
         ]}
       />
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-12 lg:gap-10">
-        <div className="space-y-14 lg:col-span-8">
+      {/* Grid items default to min-width:auto, which lets a wide JSON line or table widen the phone layout;
+          min-w-0 keeps every column to the screen. Debug is its own item so that, stacked on a phone, the facts
+          card comes before it instead of reading as part of the troubleshooting section. */}
+      <div className="mt-10 grid gap-y-14 lg:grid-cols-12 lg:gap-x-10">
+        <div className="min-w-0 space-y-14 lg:col-span-8">
           {run.status === "FAILED" && run.error ? (
             <div className="rounded-xl bg-danger-soft p-6">
               <p className="text-title-3 text-danger">{worker.name} couldn’t finish this run</p>
@@ -214,12 +231,9 @@ export default async function RunPage({ params }: { params: Promise<{ runId: str
           </Section>
           </section>
 
-          <div id="debug" className={ANCHOR}>
-            <DebugTrace detail={detail} />
-          </div>
         </div>
 
-        <aside className="lg:col-span-4">
+        <aside className="min-w-0 lg:col-span-4 lg:col-start-9 lg:row-span-2 lg:row-start-1">
           <Card className="lg:sticky lg:top-[124px]">
             <CardContent>
               <dl>
@@ -259,6 +273,10 @@ export default async function RunPage({ params }: { params: Promise<{ runId: str
             </CardContent>
           </Card>
         </aside>
+
+        <div id="debug" className={`${ANCHOR} min-w-0 lg:col-span-8 lg:col-start-1`}>
+          <DebugTrace detail={detail} />
+        </div>
       </div>
 
       <RunStickyActions

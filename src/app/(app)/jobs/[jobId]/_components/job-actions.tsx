@@ -102,8 +102,8 @@ function ConfirmAction({
 }
 
 /**
- * One primary pill at most, one gray pill beside it, and everything consequential behind a "…" menu — on a
- * phone the primary moves to a bar pinned at the bottom of the viewport.
+ * Gray pills beside a "…" menu for everything consequential — on a phone the hire action moves to a bar pinned
+ * at the bottom of the viewport as the page's one primary.
  */
 export function JobActions({ jobId, title, status, can, permissions, currentWorker }: JobActionsProps) {
   const router = useRouter();
@@ -118,12 +118,14 @@ export function JobActions({ jobId, title, status, can, permissions, currentWork
   const showDiscard = can.discard && mayManage;
   const hasOverflow = showClose || showDiscard;
 
+  // On desktop the global nav's blue "Hire" pill is already this view's one primary, and both lead into the hire
+  // flow — so the header's own hire action is a gray pill there. The phone bar (no nav pill) keeps it blue.
   const primary = showContinue ? (
-    <Button asChild>
+    <Button variant="secondary" asChild>
       <Link href={hireHref}>Continue setup</Link>
     </Button>
   ) : showHire ? (
-    <Button asChild>
+    <Button variant="secondary" asChild>
       <Link href={hireHref}>Hire a worker</Link>
     </Button>
   ) : null;

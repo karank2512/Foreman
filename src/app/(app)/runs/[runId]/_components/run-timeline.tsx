@@ -11,7 +11,7 @@ import type { RunLiveView } from "@/server/runtime/types";
 import { ApprovalDecision } from "./approval-decision";
 import { useRunLive } from "./run-live";
 import { hasDetails, StepDetails } from "./step-details";
-import { STEP_STATUS_META } from "./step-meta";
+import { heldBackToolStepIds, STEP_STATUS_META } from "./step-meta";
 
 /**
  * The step-by-step story of a run: a calm vertical sequence of human sentences, one small state dot each, with
@@ -96,7 +96,9 @@ function StepRow({ step, detail, runId, runStatus, workerId, workerName, canDeci
   const now = useNow(step.durationMs === null && (step.status === "RUNNING" || step.status === "WAITING"));
   const time = elapsed(step, now);
   const tokens = stepTokens(detail);
+  const meta = [time, tokens > 0 ? `${formatTokens(tokens)} tokens` : null].filter(Boolean).join(" · ");
 
+  // On a phone the duration/tokens drop under the sentence instead of squeezing it into a narrow column.
   const heading = (
     <>
       <span className="min-w-0 flex-1">
@@ -106,13 +108,10 @@ function StepRow({ step, detail, runId, runStatus, workerId, workerName, canDeci
         {step.status !== "SUCCEEDED" && step.status !== "PENDING" ? (
           <span className={cn("mt-0.5 block text-footnote", tone.text)}>{status.label}</span>
         ) : null}
+        {meta ? <span className="metric mt-0.5 block text-footnote text-muted-foreground sm:hidden">{meta}</span> : null}
       </span>
       <span className="metric flex shrink-0 items-center gap-2 pt-0.5 text-footnote text-muted-foreground">
-        <span>
-          {time ?? ""}
-          {time && tokens > 0 ? " · " : ""}
-          {tokens > 0 ? `${formatTokens(tokens)} tokens` : ""}
-        </span>
+        {meta ? <span className="max-sm:hidden">{meta}</span> : null}
         {expandable ? (
           <ChevronDown
             className={cn("size-3.5 transition-transform duration-200 ease-standard", open && "rotate-180")}
@@ -173,20 +172,23 @@ function StepRow({ step, detail, runId, runStatus, workerId, workerName, canDeci
 
 export function RunTimeline({ runId, workerId, workerName, details, canDecide }: RunTimelineProps) {
   const { live, polling, refresh } = useRunLive();
-  const { run, steps } = live;
+  const { run } = live;
+  // One row per event: a send waiting on you shows as its approval, not also as a pending tool step.
+  const held = heldBackToolStepIds(live.steps, details);
+  const steps = held.size > 0 ? live.steps.filter((s) => !held.has(s.id)) : live.steps;
 
   // A WAITING approval that appeared during polling has no server detail yet (and so no Approve button):
   // fetch it once. Other details can wait for the refresh that follows the last poll.
   const requested = useRef(new Set<string>());
   useEffect(() => {
-    for (const step of steps) {
+    for (const step of live.steps) {
       if (step.kind === "APPROVAL" && step.status === "WAITING" && !details[step.id] && !requested.current.has(step.id)) {
         requested.current.add(step.id);
         refresh();
         break;
       }
     }
-  }, [steps, details, refresh]);
+  }, [live.steps, details, refresh]);
 
   if (steps.length === 0) {
     return (

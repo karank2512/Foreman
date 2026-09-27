@@ -98,7 +98,8 @@ export default async function OpengraphImage() {
           <div style={{ fontSize: 104, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.02 }}>
             Meet your new hire.
           </div>
-          <div style={{ marginTop: 28, fontSize: 36, color: SECONDARY, maxWidth: 1000, lineHeight: 1.3 }}>
+          {/* 760px breaks the line after "for it," — at full width "deliverable." was left alone on line two. */}
+          <div style={{ marginTop: 28, fontSize: 36, color: SECONDARY, maxWidth: 760, lineHeight: 1.3 }}>
             Scope the work, hire an AI worker for it, review every deliverable.
           </div>
         </div>

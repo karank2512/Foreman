@@ -2,7 +2,7 @@ import type { EvaluationType } from "@prisma/client";
 import { EmptyState } from "@/components/empty-state";
 import { SimulatedBadge } from "@/components/simulated-badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDate, formatPercent } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { SCORE_BAND_CLASSES, scoreBand } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { EvaluationDetails } from "@/server/domain/evaluation";
@@ -31,6 +31,25 @@ export interface EvaluationFindingsProps {
   score?: number | null;
   /** Shown when there is nothing yet. */
   emptyDescription?: string;
+  /** "tile" = the flat #f5f5f7 card, for a white page (the deliverable reading view). */
+  surface?: "default" | "tile";
+}
+
+/**
+ * How much a criterion counts, as a share of the rubric: "counts for 29%". Weights are relative (a 2 beside five
+ * 1s is 2/7, not "200%"), and when every criterion counts the same the line says nothing, so it is left out.
+ */
+export function criterionShare(weight: number, weights: number[]): string | null {
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  if (!(total > 0) || weights.every((w) => w === weights[0])) return null;
+  return `counts for ${Math.round((weight / total) * 100)}%`;
+}
+
+/** The headline is a whole number everywhere it appears — the section intro rounds the same way. */
+export function headlineScore(score: number | null | undefined, automated: Array<{ score: number }>): number | null {
+  if (score !== null && score !== undefined) return Math.round(score);
+  if (automated.length === 0) return null;
+  return Math.round((automated.reduce((s, e) => s + e.score, 0) / automated.length) * 100);
 }
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
@@ -68,18 +87,20 @@ function Checks({ evaluation, workerName }: { evaluation: EvaluationCardData; wo
       </p>
       {checks.length > 0 ? (
         <ul className="mt-3">
+          {/* Sentence first, the measurement under it: a long "expected …" detail can't squeeze the check's own
+              words into a one-word column or run past the card. */}
           {checks.map((c) => (
-            <li key={c.id} className="flex flex-col gap-1 border-b border-border py-3 last:border-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-              <span className="flex min-w-0 items-baseline gap-2.5 text-[15px] text-pretty">
-                <span
-                  aria-hidden="true"
-                  className={cn("mt-1.5 size-[7px] shrink-0 rounded-full", c.passed ? "bg-success" : "bg-danger")}
-                />
-                <span>{c.description}</span>
-              </span>
-              <span className="metric shrink-0 pl-5 text-footnote text-muted-foreground sm:pl-0">
-                {c.observed}
-                {c.expected ? ` · expected ${c.expected}` : ""}
+            <li key={c.id} className="flex items-baseline gap-2.5 border-b border-border py-3 last:border-0">
+              <span
+                aria-hidden="true"
+                className={cn("size-[7px] shrink-0 translate-y-[-1px] rounded-full", c.passed ? "bg-success" : "bg-danger")}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] text-pretty">{c.description}</span>
+                <span className="metric mt-0.5 block text-footnote break-words text-muted-foreground">
+                  {c.observed}
+                  {c.expected ? ` · expected ${c.expected}` : ""}
+                </span>
               </span>
             </li>
           ))}
@@ -94,6 +115,7 @@ function Judge({ evaluation }: { evaluation: EvaluationCardData }) {
   if (!details) {
     return <p className="text-[15px] text-pretty text-muted-foreground">{evaluation.summary ?? "Scored against the job’s rubric."}</p>;
   }
+  const weights = details.criteria.map((c) => c.weight);
 
   return (
     <>
@@ -110,7 +132,9 @@ function Judge({ evaluation }: { evaluation: EvaluationCardData }) {
             </span>
             <span className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
               <CriterionBar score={c.score} />
-              <span className="text-caption text-muted-foreground">weight {formatPercent(c.weight)}</span>
+              {criterionShare(c.weight, weights) ? (
+                <span className="text-caption text-muted-foreground">{criterionShare(c.weight, weights)}</span>
+              ) : null}
             </span>
           </li>
         ))}
@@ -145,10 +169,10 @@ function Verdict({ evaluation }: { evaluation: EvaluationCardData }) {
 
 const ORDER: Record<EvaluationType, number> = { DETERMINISTIC: 0, LLM_JUDGE: 1, USER_FEEDBACK: 2 };
 
-export function EvaluationFindings({ evaluations, workerName, score, emptyDescription }: EvaluationFindingsProps) {
+export function EvaluationFindings({ evaluations, workerName, score, emptyDescription, surface = "default" }: EvaluationFindingsProps) {
   if (evaluations.length === 0) {
     return (
-      <Card>
+      <Card variant={surface}>
         <EmptyState
           title="Not evaluated yet"
           description={emptyDescription ?? `Automated checks and the reviewer run as soon as ${workerName} finishes.`}
@@ -159,13 +183,12 @@ export function EvaluationFindings({ evaluations, workerName, score, emptyDescri
   }
 
   const automated = evaluations.filter((e) => e.type !== "USER_FEEDBACK");
-  const headline =
-    score ?? (automated.length > 0 ? Math.round((automated.reduce((s, e) => s + e.score, 0) / automated.length) * 100) : null);
+  const headline = headlineScore(score, automated);
   const band = SCORE_BAND_CLASSES[scoreBand(headline)];
   const sorted = [...evaluations].sort((a, b) => ORDER[a.type] - ORDER[b.type]);
 
   return (
-    <Card>
+    <Card variant={surface}>
       <CardContent className="space-y-6">
         {headline !== null ? (
           <div>

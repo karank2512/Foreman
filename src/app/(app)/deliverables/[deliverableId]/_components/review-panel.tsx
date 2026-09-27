@@ -164,7 +164,7 @@ export function ReviewPanel({
 
   return (
     <>
-      <Card className="hidden lg:flex">
+      <Card variant="tile" className="hidden lg:flex">
         <CardHeader>
           <CardTitle>{question}</CardTitle>
         </CardHeader>

@@ -13,11 +13,13 @@ import { WorkerAvatar } from "@/components/worker-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate, formatDateTime, pluralize } from "@/lib/format";
+import { statusLabel } from "@/lib/status";
 import { requireSession } from "@/server/auth";
 import { isAppError } from "@/server/errors";
 import { getDeliverableDetail, type DeliverableDetail } from "@/server/queries/deliverables";
 import { EvaluationFindings } from "../../runs/_components/evaluation-findings";
 import { FORMAT_LABEL } from "../_components/deliverable-rows";
+import { ledeFor } from "./_components/lede";
 import { ReviewPanel } from "./_components/review-panel";
 
 export const metadata: Metadata = { title: "Deliverable" };
@@ -57,19 +59,25 @@ function Disclosure({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+/**
+ * The reading view is a white page, not the #f5f5f7 app canvas: a document, not a dashboard. The shell owns the
+ * canvas, so the page flips it only while its own marker is on screen — navigating away restores the canvas.
+ */
+const READING_VIEW_CSS = ".bg-canvas:has([data-reading-view]){background-color:var(--background)}";
+
 /** The artifact itself: a report reads as an article, records read as a table in the spec's column order. */
 function Artifact({ d }: { d: DeliverableDetail }) {
+  const lede = ledeFor(d.summary, d.content, d.format);
+
   if (d.format === "MARKDOWN") {
     return (
       <div className="space-y-6">
-        <Card className="py-10 sm:py-14">
-          <CardContent className="mx-auto w-full max-w-[692px]">
-            {d.summary ? (
-              <p className="text-body-lg mb-8 border-b border-border pb-8 text-pretty text-muted-foreground">{d.summary}</p>
-            ) : null}
-            <Markdown content={d.content} />
-          </CardContent>
-        </Card>
+        <article className="max-w-[692px] min-w-0">
+          {lede ? (
+            <p className="text-body-lg mb-8 border-b border-border pb-8 break-words text-pretty text-muted-foreground">{lede}</p>
+          ) : null}
+          <Markdown content={d.content} />
+        </article>
         {/* The report's own table is capped by compile_report; the full dataset behind it is one click away. */}
         {d.rows ? (
           <Disclosure label={`All ${pluralize(d.rows.length, "record")} behind this report`}>
@@ -83,7 +91,7 @@ function Artifact({ d }: { d: DeliverableDetail }) {
   if (d.rows) {
     return (
       <div className="space-y-6">
-        {d.summary ? <p className="text-body-lg max-w-[692px] text-pretty text-muted-foreground">{d.summary}</p> : null}
+        {lede ? <p className="text-body-lg max-w-[692px] break-words text-pretty text-muted-foreground">{lede}</p> : null}
         {/* Explicit columns: the stored records come out of jsonb with their keys reordered. Ranked records already
             number themselves, so the table's own "#" column would only compete with `rank`. */}
         <DataTable
@@ -103,10 +111,10 @@ function Artifact({ d }: { d: DeliverableDetail }) {
   }
 
   return (
-    <Card className="py-10">
+    <Card variant="tile" className="max-w-full py-10">
       <CardContent className="mx-auto w-full max-w-[692px]">
-        {d.summary ? (
-          <p className="text-body-lg mb-8 border-b border-border pb-8 text-pretty text-muted-foreground">{d.summary}</p>
+        {lede ? (
+          <p className="text-body-lg mb-8 border-b border-border pb-8 break-words text-pretty text-muted-foreground">{lede}</p>
         ) : null}
         <pre className="max-h-[32rem] overflow-auto rounded-lg bg-muted p-4 font-mono text-[13px] leading-5 whitespace-pre">
           {d.content}
@@ -134,7 +142,10 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
   const copyLabel = d.format === "CSV" ? "Copy CSV" : d.format === "JSON" ? "Copy JSON" : "Copy text";
 
   return (
-    <>
+    <div data-reading-view="">
+      <style href="deliverable-reading-view" precedence="default">
+        {READING_VIEW_CSS}
+      </style>
       <PageHeader
         backHref="/deliverables"
         backLabel="Deliverables"
@@ -171,8 +182,10 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
         }
       />
 
+      {/* min-w-0: a grid item's default min-width:auto would let the report's widest table or line set the
+          width of the whole phone layout. */}
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
-        <div className="space-y-14 lg:col-span-8">
+        <div className="min-w-0 space-y-14 lg:col-span-8">
           <Artifact d={d} />
 
           <Section title="How it measured up" description="Automated checks, the reviewer’s read, and your own verdict.">
@@ -180,6 +193,7 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
               evaluations={d.evaluations}
               workerName={worker.name}
               score={score}
+              surface="tile"
               emptyDescription={
                 run.status === "SUCCEEDED"
                   ? "Checks haven’t landed yet — they’ll appear here shortly."
@@ -189,7 +203,7 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
           </Section>
         </div>
 
-        <aside className="space-y-6 lg:col-span-4">
+        <aside className="min-w-0 space-y-6 lg:col-span-4">
           <div className="lg:sticky lg:top-[88px] lg:space-y-6">
             <ReviewPanel
               deliverableId={d.id}
@@ -203,7 +217,7 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
               canReview={d.permissions["deliverables.review"]}
             />
 
-            <Card>
+            <Card variant="tile">
               <CardContent>
                 <dl>
                   <Fact label="Worker">
@@ -218,7 +232,11 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
                   </Fact>
                   <Fact label="Version">v{d.version.version}</Fact>
                   <Fact label="Run">
-                    <Link href={`/runs/${run.id}`} className="inline-flex text-link hover:underline">
+                    <Link
+                      href={`/runs/${run.id}`}
+                      aria-label={`See the run · ${statusLabel("run", run.status)}`}
+                      className="inline-flex text-link hover:underline"
+                    >
                       <StatusBadge kind="run" status={run.status} />
                     </Link>
                   </Fact>
@@ -230,12 +248,6 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
                   ) : null}
                   <Fact label="Handed in">{formatDateTime(d.createdAt)}</Fact>
                   {d.reviewedAt ? <Fact label="Reviewed">{formatDateTime(d.reviewedAt)}</Fact> : null}
-                  <Fact label="Id">
-                    <span className="inline-flex items-center gap-1 font-mono text-caption">
-                      {d.id.slice(0, 10)}…
-                      <CopyButton value={d.id} />
-                    </span>
-                  </Fact>
                 </dl>
               </CardContent>
             </Card>
@@ -245,6 +257,6 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
 
       {/* Room for the mobile review bar. */}
       <div className="h-16 lg:hidden" aria-hidden="true" />
-    </>
+    </div>
   );
 }

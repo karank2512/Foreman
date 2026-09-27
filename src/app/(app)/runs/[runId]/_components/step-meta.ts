@@ -1,4 +1,5 @@
 import type { RunStepKind, RunStepStatus, RunTrigger, ToolCallStatus } from "@prisma/client";
+import { format } from "date-fns";
 import type { StatusTone } from "@/lib/status";
 
 /**
@@ -55,4 +56,58 @@ export function recordCounts(output: unknown): { before: number; after: number }
 export function deliverableIdOf(output: unknown): string | null {
   const id = (output as { deliverableId?: unknown } | null)?.deliverableId;
   return typeof id === "string" ? id : null;
+}
+
+/** The addresses a send-style request goes to, when its payload names them. */
+export function recipientsOf(payload: unknown): string[] {
+  const raw = (payload as { recipients?: unknown } | null)?.recipients;
+  return Array.isArray(raw) ? raw.filter((r): r is string => typeof r === "string" && r.trim() !== "") : [];
+}
+
+/** The final button of the approve confirmation names the consequence: "Send to 2 recipients". */
+export function approveConfirmLabel(payload: unknown): string {
+  const n = recipientsOf(payload).length;
+  if (n === 0) return "Approve";
+  return `Send to ${n} ${n === 1 ? "recipient" : "recipients"}`;
+}
+
+/** A run is named by when it happened — the job title already heads the job's own page. */
+export function runHeading(startedAt: string | null, createdAt: string): string {
+  const when = new Date(startedAt ?? createdAt);
+  return Number.isNaN(when.getTime()) ? "Run" : `Run on ${format(when, "MMM d, h:mm a")}`;
+}
+
+interface TimelineStepLike {
+  id: string;
+  kind: RunStepKind;
+  status: RunStepStatus;
+  componentId: string | null;
+}
+
+interface TimelineDetailLike {
+  input: unknown;
+  toolCalls: Array<{ id: string }>;
+}
+
+/**
+ * The tool step a WAITING approval is holding back. While the run waits, that step is a duplicate of the approval
+ * row — and its label is already written in the past tense ("Sent …") although nothing has been sent — so the
+ * timeline shows the approval alone. Linked by the approval step's `toolCallId` when the details are loaded;
+ * before that, by being the pending tool step of the same component directly above the approval.
+ */
+export function heldBackToolStepIds(steps: TimelineStepLike[], details: Record<string, TimelineDetailLike | undefined>): Set<string> {
+  const held = new Set<string>();
+  steps.forEach((step, i) => {
+    if (step.kind !== "APPROVAL" || step.status !== "WAITING") return;
+    const toolCallId = (details[step.id]?.input as { toolCallId?: unknown } | null | undefined)?.toolCallId;
+    const linked =
+      typeof toolCallId === "string"
+        ? steps.find((s) => s.kind === "TOOL_CALL" && details[s.id]?.toolCalls.some((c) => c.id === toolCallId))
+        : undefined;
+    const previous = steps[i - 1];
+    const candidate =
+      linked ?? (previous && previous.kind === "TOOL_CALL" && previous.componentId === step.componentId ? previous : undefined);
+    if (candidate && candidate.status === "PENDING") held.add(candidate.id);
+  });
+  return held;
 }
