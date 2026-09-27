@@ -98,8 +98,14 @@ export default async function JobDetailPage({ params }: Params) {
         description={
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-footnote text-muted-foreground">
             <StatusBadge kind="job" status={job.status} />
-            <span aria-hidden="true">·</span>
-            <span>{facts.join(" · ")}</span>
+            {/* Each "·" is glued to the fact after it (no break before the first fact, a no-break space after the
+                others), so when the line wraps on a phone a dot starts the new row instead of dangling at the end. */}
+            <span>
+              <span aria-hidden="true" className="mr-2">
+                ·
+              </span>
+              {facts.join(" ·\u00a0")}
+            </span>
           </span>
         }
         actions={

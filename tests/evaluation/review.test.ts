@@ -80,7 +80,8 @@ describe("evaluation: review recommendation bands (pure)", () => {
     expect(narrative.summary).toContain("Sam completed 8 runs in the last 30 days (6 succeeded, 2 failed)");
     expect(narrative.summary).toContain("6 deliverables (3 accepted, 3 sent back)");
     expect(narrative.summary).toContain("Overall quality score: 52/100");
-    expect(narrative.problems).toContain("2 of 8 runs failed on “Run exceeded the cost limit of $0.50”");
+    expect(narrative.problems).toContain("2 of 8 runs failed because they hit their cost limit");
+    expect(narrative.problems.join(" ")).not.toContain("Run exceeded");
     expect(narrative.problems.some((p) => p.includes("Half the competitors are missing their enterprise tier."))).toBe(true);
     expect(narrative.problems).toContain("Records per report at 6 records misses the target of 10 records");
     expect(narrative.strengths).toContain("Cost per run at $0.31 meets the target of $0.50");
@@ -163,7 +164,8 @@ describe("evaluation: generatePerformanceReview", () => {
     expect(storedMetrics).toMatchObject({ runs: 4, succeeded: 2, failed: 2, rejected: 2, acceptanceRate: 0 });
     expect(review.summary).toContain("Sam completed 4 runs in the last 30 days (2 succeeded, 2 failed)");
     const problems = review.problems as string[];
-    expect(problems.some((p) => p.includes("2 of 4 runs failed on “Run exceeded the cost limit”"))).toBe(true);
+    expect(problems).toContain("2 of 4 runs failed because they hit their cost limit");
+    expect(`${problems.join(" ")} ${review.recommendationDetail}`).not.toContain("Run exceeded");
     expect(problems.some((p) => p.includes("Still missing amounts and sources."))).toBe(true);
     expect(review.recommendationDetail).toContain("Replace Sam because");
 

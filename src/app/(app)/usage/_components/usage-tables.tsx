@@ -6,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber, formatTokens, formatUsd, formatUsdPrecise, pluralize } from "@/lib/format";
 import { initialsOf } from "@/lib/initials";
+import type { ModelTier } from "@/server/domain";
 import type { UsageModelRow, UsageToolRow, UsageWorkerRow } from "@/server/queries/usage";
+import { modelRowLabel } from "@/app/(app)/workers/[workerId]/_tabs/cost-labels";
 
 /**
  * The three breakdowns. Every row is plain JSON from `getUsagePage`, so these stay server components.
@@ -120,7 +122,20 @@ export function WorkerCostTable({ rows, organizationName }: { rows: UsageWorkerR
   );
 }
 
-export function ModelCostTable({ rows, markSimulated }: { rows: UsageModelRow[]; markSimulated: boolean }) {
+/**
+ * The ledger stores model ids; a manager thinks in tiers. Rows are named the way the worker profile's Cost tab
+ * names them (`modelRowLabel`): "Standard model", with a live model's id kept as a quiet second detail and a
+ * simulator id ("mock-standard") dropped as noise. `routes` is today's tier routing, from `llm.route()`.
+ */
+export function ModelCostTable({
+  rows,
+  markSimulated,
+  routes,
+}: {
+  rows: UsageModelRow[];
+  markSimulated: boolean;
+  routes: ReadonlyArray<{ tier: ModelTier; model: string }>;
+}) {
   if (rows.length === 0) {
     return (
       <Card className="py-0">
@@ -132,19 +147,23 @@ export function ModelCostTable({ rows, markSimulated }: { rows: UsageModelRow[];
   return (
     <Card className="py-2 sm:py-0">
       <ul className="sm:hidden">
-        {rows.map((row) => (
-          <ListRow
-            key={`${row.provider}:${row.model}`}
-            title={row.model}
-            meta={
-              <>
-                {row.providerLabel} · {pluralize(row.calls, "call")} · {formatTokens(row.inputTokens)} in ·{" "}
-                {formatTokens(row.outputTokens)} out
-              </>
-            }
-            value={formatUsdPrecise(row.costUsd)}
-          />
-        ))}
+        {rows.map((row) => {
+          const label = modelRowLabel(row.model, routes);
+          return (
+            <ListRow
+              key={`${row.provider}:${row.model}`}
+              title={label.title}
+              meta={
+                <>
+                  {label.detail ? `${label.detail} · ` : ""}
+                  {row.providerLabel} · {pluralize(row.calls, "call")} · {formatTokens(row.inputTokens)} in ·{" "}
+                  {formatTokens(row.outputTokens)} out
+                </>
+              }
+              value={formatUsdPrecise(row.costUsd)}
+            />
+          );
+        })}
       </ul>
 
       <div className="hidden sm:block">
@@ -159,21 +178,26 @@ export function ModelCostTable({ rows, markSimulated }: { rows: UsageModelRow[];
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={`${row.provider}:${row.model}`} className="h-14">
-                <TableCell>
-                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                    <span className="font-medium">{row.model}</span>
-                    <span className="text-footnote text-muted-foreground">{row.providerLabel}</span>
-                    {markSimulated && row.simulated ? <SimulatedBadge /> : null}
-                  </span>
-                </TableCell>
-                <TableCell className="metric text-right">{formatNumber(row.calls, 0)}</TableCell>
-                <TableCell className="metric text-right text-muted-foreground">{formatTokens(row.inputTokens)}</TableCell>
-                <TableCell className="metric text-right text-muted-foreground">{formatTokens(row.outputTokens)}</TableCell>
-                <TableCell className="metric text-right font-medium">{formatUsdPrecise(row.costUsd)}</TableCell>
-              </TableRow>
-            ))}
+            {rows.map((row) => {
+              const label = modelRowLabel(row.model, routes);
+              return (
+                <TableRow key={`${row.provider}:${row.model}`} className="h-14">
+                  <TableCell>
+                    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <span className="font-medium">{label.title}</span>
+                      <span className="text-footnote text-muted-foreground">
+                        {label.detail ? `${label.detail} · ${row.providerLabel}` : row.providerLabel}
+                      </span>
+                      {markSimulated && row.simulated ? <SimulatedBadge /> : null}
+                    </span>
+                  </TableCell>
+                  <TableCell className="metric text-right">{formatNumber(row.calls, 0)}</TableCell>
+                  <TableCell className="metric text-right text-muted-foreground">{formatTokens(row.inputTokens)}</TableCell>
+                  <TableCell className="metric text-right text-muted-foreground">{formatTokens(row.outputTokens)}</TableCell>
+                  <TableCell className="metric text-right font-medium">{formatUsdPrecise(row.costUsd)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

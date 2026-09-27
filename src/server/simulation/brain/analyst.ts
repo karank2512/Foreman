@@ -1,7 +1,7 @@
 import type { MockTextResponse } from "@/server/models/types";
 import type { MockAgentTurnInput } from "@/server/simulation/types";
 import { hashSeed, seededPick } from "../rng";
-import { formatUsdShort, joinList, plural } from "../text";
+import { formatUsdShort, joinList, plural, pluralNoun } from "../text";
 import { computeMetrics, groupLabelHint, type GroupMetric, type Metrics, type NumericMetric } from "./analyst-metrics";
 import { fixFirst } from "./analyst-priorities";
 import { readHints } from "./hints";
@@ -69,7 +69,7 @@ function leaders(g: GroupMetric): GroupMetric["entries"] {
   return g.entries.filter((e) => e.count === g.entries[0].count);
 }
 
-function headline(m: Metrics, things: string): string[] {
+function headline(m: Metrics, one: string, things: string): string[] {
   const lines: string[] = [];
   const g = m.group;
   if (g && g.entries.length > 0) {
@@ -87,13 +87,13 @@ function headline(m: Metrics, things: string): string[] {
   if (n?.lowerIsUrgent) {
     const leader = n.top[0];
     lines.push(
-      `- ${n.label[0].toUpperCase()}${n.label.slice(1)}: averaging ${num(n.mean, n.money)} per ${things.replace(/s$/, "")}, from ${num(n.min, n.money)} to ${num(n.max, n.money)}` +
+      `- ${n.label[0].toUpperCase()}${n.label.slice(1)}: averaging ${num(n.mean, n.money)} per ${one}, from ${num(n.min, n.money)} to ${num(n.max, n.money)}` +
         (leader ? `; the most urgent is ${leader.name} at ${num(leader.value, n.money)}.` : "."),
     );
   } else if (n) {
     const leader = n.top[0];
     lines.push(
-      `- Total ${n.label}: **${num(n.sum, n.money)}**, averaging ${num(n.mean, n.money)} per ${things.replace(/s$/, "")}` +
+      `- Total ${n.label}: **${num(n.sum, n.money)}**, averaging ${num(n.mean, n.money)} per ${one}` +
         (leader ? `; the largest is ${leader.name} at ${num(leader.value, n.money)}.` : `; the range runs from ${num(n.min, n.money)} to ${num(n.max, n.money)}.`),
     );
   }
@@ -195,7 +195,7 @@ function secondaryInsight(s: GroupMetric, g: GroupMetric | null, records: Array<
   return `${negativeLike.count} of ${records.length || "the"} ${things} are **${negativeLike.key}** ${s.label} (${pct(negativeLike.share)})${where}.`;
 }
 
-function watchList(m: Metrics, things: string): string[] {
+function watchList(m: Metrics, one: string, things: string): string[] {
   const items: string[] = [];
   const g = m.group;
   if (g && g.entries.length > 0) items.push(`**${g.entries[0].key}** — whether its ${pct(g.entries[0].share)} share of ${things} keeps growing next run.`);
@@ -210,7 +210,6 @@ function watchList(m: Metrics, things: string): string[] {
   const neg = m.secondary ? severest(m.secondary) : undefined;
   if (m.secondary && neg) items.push(`**${neg.key} ${m.secondary.label}** items (${neg.count}) — these need an owner before the next review.`);
   if (g && g.entries.length > 2) {
-    const one = things.replace(/s$/, "");
     const smallest = g.entries[g.entries.length - 1];
     items.push(
       isCriticalGroup(g.field, smallest.key)
@@ -230,7 +229,8 @@ function watchList(m: Metrics, things: string): string[] {
 
 export function renderInsights(args: { input: MockAgentTurnInput; records: Array<Record<string, unknown>>; metrics: Metrics }): string {
   const { input, records, metrics: m } = args;
-  const things = `${noun(input.spec)}s`;
+  const one = noun(input.spec);
+  const things = pluralNoun(one);
   const seed = hashSeed(`${input.component.id}|${input.spec.title}|${m.total}`);
   const intro = seededPick(
     [
@@ -262,7 +262,6 @@ export function renderInsights(args: { input: MockAgentTurnInput; records: Array
   }
   if (insights.length < 3 && m.group && m.group.entries.length > 2) {
     const [top, second, third] = m.group.entries;
-    const one = things.replace(/s$/, "");
     const tied = leaders(m.group);
     // Only the groups after ALL of the leaders are "behind" them; a group level with the leaders is one of them.
     const chasers = m.group.entries.slice(tied.length);
@@ -281,10 +280,10 @@ export function renderInsights(args: { input: MockAgentTurnInput; records: Array
   }
   if (insights.length < 3) insights.push(`Coverage this run: ${m.total} ${things} against a target of ${input.spec.deliverable.targetCount ?? "no fixed number"}.`);
 
-  const lines = [intro, "", "### Headline numbers", ...headline(m, things), "", "### Insights", ...insights.slice(0, 5).map((s, i) => `${i + 1}. ${s}`)];
-  const priorities = fixFirst(records, m.group, things);
+  const lines = [intro, "", "### Headline numbers", ...headline(m, one, things), "", "### Insights", ...insights.slice(0, 5).map((s, i) => `${i + 1}. ${s}`)];
+  const priorities = fixFirst(records, m.group, one);
   if (priorities.length > 0) lines.push("", ...priorities);
-  const watch = watchList(m, things);
+  const watch = watchList(m, one, things);
   if (watch.length > 0) lines.push("", "### What to watch", ...watch.map((w) => `- ${w}`));
   return lines.join("\n");
 }

@@ -44,7 +44,7 @@ export function ProposalCost({ proposal }: { proposal: WorkerProposal }) {
             </p>
           </div>
           <div className="text-right max-sm:text-left">
-            <p className="metric text-title-3">{formatUsdPrecise(costEstimate.perRunUsd)}</p>
+            <p className="metric text-title-3">{formatUsd(costEstimate.perRunUsd)}</p>
             <p className="mt-1 text-footnote text-muted-foreground">
               per run · {CONFIDENCE_LABELS[costEstimate.confidence].toLowerCase()}
             </p>

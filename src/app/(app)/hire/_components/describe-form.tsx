@@ -121,7 +121,9 @@ export function DescribeForm({ initialText = "" }: { initialText?: string }) {
               disabled={pending}
               aria-pressed={activeExample === job.id}
               className={cn(
-                "inline-flex h-9 items-center rounded-full px-4 text-callout font-medium transition-[background-color,color] duration-200 ease-standard",
+                "relative inline-flex h-9 items-center rounded-full px-4 text-callout font-medium transition-[background-color,color] duration-200 ease-standard",
+                // Under `md` a 44px tap band around the 36px pill; with the 8px row gap, bands of stacked rows just meet.
+                "max-md:before:absolute max-md:before:inset-x-0 max-md:before:top-[calc(50%_-_22px)] max-md:before:h-11",
                 "outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:opacity-40",
                 activeExample === job.id
                   ? "bg-foreground text-background"

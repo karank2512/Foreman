@@ -91,7 +91,40 @@ export function pct(part: number, whole: number): string {
   return `${whole > 0 ? Math.round((part / whole) * 100) : 0}%`;
 }
 
-export function plural(n: number, one: string, many = `${one}s`): string {
+// A Map, not an object literal: a noun like "constructor" must not hit Object.prototype.
+const IRREGULAR_PLURALS: ReadonlyMap<string, string> = new Map([
+  ["person", "people"],
+  ["child", "children"],
+  ["criterion", "criteria"],
+  ["phenomenon", "phenomena"],
+  ["axis", "axes"],
+  ["quiz", "quizzes"],
+]);
+/** Mass nouns never take an s: "research", not "researchs". */
+const UNCOUNTABLE = new Set(["feedback", "data", "metadata", "information", "research", "news", "software", "equipment", "series", "species"]);
+
+/**
+ * English plural of a record noun, inflecting only the last word ("feedback item" → "feedback items"):
+ * company → companies, analysis → analyses, address → addresses, day → days, API → APIs.
+ */
+export function pluralNoun(one: string): string {
+  const match = /^(.*?)([A-Za-z]+)$/.exec(one);
+  if (!match) return `${one}s`;
+  const [, head, word] = match;
+  const lower = word.toLowerCase();
+  const irregular = IRREGULAR_PLURALS.get(lower);
+  let many: string;
+  if (UNCOUNTABLE.has(lower)) many = word;
+  else if (word.length > 1 && word === word.toUpperCase()) many = `${word}s`;
+  else if (irregular) many = word[0] + irregular.slice(1);
+  else if (/sis$/i.test(word)) many = `${word.slice(0, -2)}es`;
+  else if (/[^aeiou]y$/i.test(word)) many = `${word.slice(0, -1)}ies`;
+  else if (/(s|x|z|ch|sh)$/i.test(word)) many = `${word}es`;
+  else many = `${word}s`;
+  return head + many;
+}
+
+export function plural(n: number, one: string, many = pluralNoun(one)): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 

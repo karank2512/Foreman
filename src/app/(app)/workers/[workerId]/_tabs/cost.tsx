@@ -49,15 +49,16 @@ export default async function CostTab({ session, workerId, workerName }: WorkerT
           label="Average a run"
           value={formatUsdPrecise(actual)}
           hint={
+            // The plan is an estimate, so it reads in whole cents; the actual spend above keeps its precision.
             estimate === null
               ? "No estimate on file"
               : delta === null
-                ? `${formatUsdPrecise(estimate)} planned`
+                ? `${formatUsd(estimate)} planned`
                 : delta > 0.1
-                  ? `${formatPercent(delta)} over the ${formatUsdPrecise(estimate)} plan`
+                  ? `${formatPercent(delta)} over the ${formatUsd(estimate)} plan`
                   : delta < -0.1
-                    ? `${formatPercent(-delta)} under the ${formatUsdPrecise(estimate)} plan`
-                    : `On the ${formatUsdPrecise(estimate)} plan`
+                    ? `${formatPercent(-delta)} under the ${formatUsd(estimate)} plan`
+                    : `On the ${formatUsd(estimate)} plan`
           }
         />
         <Stat label="Per deliverable" value={formatUsdPrecise(cost.costPerDeliverableUsd)} hint="Spend ÷ work produced" />

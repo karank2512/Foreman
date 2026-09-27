@@ -21,12 +21,20 @@ export interface SegmentedLinksProps {
   className?: string;
 }
 
+/**
+ * Under `md` each 28px option carries a 44px `::before` tap band. The scroller clips whatever overflows it, so on
+ * phones it grows to exactly 44px (the negative margin keeps the row where it was), and its right edge fades so a
+ * cut-off option reads as "scroll for more". The extra right padding lets the last option scroll clear of the fade.
+ */
+const HIT_AREA = "relative max-md:before:absolute max-md:before:inset-x-0 max-md:before:top-[calc(50%_-_22px)] max-md:before:h-11";
+
 export function SegmentedLinks({ label, options, className }: SegmentedLinksProps) {
   return (
     <nav
       aria-label={label}
       className={cn(
         "-mx-1 max-w-full overflow-x-auto px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "max-md:-my-0.5 max-md:py-1.5 max-sm:pr-6 max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)]",
         className,
       )}
     >
@@ -38,6 +46,7 @@ export function SegmentedLinks({ label, options, className }: SegmentedLinksProp
             scroll={false}
             aria-current={option.active ? "page" : undefined}
             className={cn(
+              HIT_AREA,
               "inline-flex h-7 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap outline-none transition-[background-color,color,box-shadow] duration-200 ease-in-out focus-visible:ring-4 focus-visible:ring-primary/30",
               option.active ? "bg-background text-foreground shadow-thumb" : "text-foreground/80 hover:text-foreground",
             )}

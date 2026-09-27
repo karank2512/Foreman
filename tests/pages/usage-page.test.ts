@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { chartDays, dayLabelStep } from "@/app/(app)/usage/_lib/chart-days";
 import { spendTrend } from "@/app/(app)/usage/_lib/trend";
-import type { UsageWorkerRow } from "@/server/queries/usage";
+import type { UsageModelRow, UsageWorkerRow } from "@/server/queries/usage";
 import { loadForSsr } from "./_ssr";
 
 type Tables = typeof import("@/app/(app)/usage/_components/usage-tables");
@@ -76,6 +76,52 @@ describe("usage › by worker (design-detail-16, design-detail-23)", () => {
     expect(html).toContain("Platform (scoping, reviews, chat)");
     // Still no link: there is no worker to open.
     expect(html).not.toContain('href="?tab=cost"');
+  });
+});
+
+describe("usage › by model names tiers, not raw ids (design-detail-14)", () => {
+  const row = (model: string, provider: string, providerLabel: string, simulated: boolean): UsageModelRow => ({
+    provider,
+    providerLabel,
+    model,
+    calls: 4,
+    inputTokens: 1200,
+    outputTokens: 300,
+    costUsd: 0.0123,
+    simulated,
+  });
+  const render = async (rows: UsageModelRow[], routes: Array<{ tier: "fast" | "standard" | "reasoning"; model: string }>) => {
+    const [{ ModelCostTable }, { TooltipProvider }] = await Promise.all([
+      loadForSsr<Tables>("src/app/(app)/usage/_components/usage-tables.tsx"),
+      loadForSsr<Tooltip>("src/components/ui/tooltip.tsx"),
+    ]);
+    return renderToStaticMarkup(h(TooltipProvider, null, h(ModelCostTable, { rows, markSimulated: false, routes })));
+  };
+
+  it("calls a simulator row by its tier and drops the mock id", async () => {
+    const simulated = [
+      { tier: "fast" as const, model: "mock-fast" },
+      { tier: "standard" as const, model: "mock-standard" },
+      { tier: "reasoning" as const, model: "mock-reasoning" },
+    ];
+    const html = await render([row("mock-standard", "mock", "Simulator", true), row("mock-fast", "mock", "Simulator", true)], simulated);
+    expect(html).toContain("Standard model");
+    expect(html).toContain("Fast model");
+    expect(html).not.toContain("mock-standard");
+    expect(html).not.toContain("mock-fast");
+  });
+
+  it("keeps a live model's id as the quiet detail beside its tier", async () => {
+    const live = [
+      { tier: "fast" as const, model: "small-1" },
+      { tier: "standard" as const, model: "big-2" },
+      { tier: "reasoning" as const, model: "big-2" },
+    ];
+    const html = await render([row("big-2", "acme", "Acme AI", false), row("retired-0", "acme", "Acme AI", false)], live);
+    expect(html).toContain("Standard / Reasoning model");
+    expect(html).toContain("big-2 · Acme AI");
+    // An id today's routing no longer serves has no tier to borrow, so it keeps its own name.
+    expect(html).toContain("retired-0");
   });
 });
 

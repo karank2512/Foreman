@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatNumber, formatPercent, formatTokens, formatUsd } from "@/lib/format";
 import { requireSession } from "@/server/auth";
+import type { ModelTier } from "@/server/domain";
+import { llm } from "@/server/models";
 import { getUsagePage, parseUsageRange } from "@/server/queries/usage";
 import { chartDays } from "./_lib/chart-days";
 import { spendTrend, type SpendTrend } from "./_lib/trend";
@@ -65,6 +67,11 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
   const previous = usage.hasUsage ? await getUsagePage(s.organizationId, days, subDays(now, days)) : null;
   const trend = spendTrend(totals.costUsd, previous?.totals.costUsd ?? 0);
   const mixedSimulation = usage.byModel.some((m) => m.simulated) && usage.byModel.some((m) => !m.simulated);
+  // The ledger keeps the model id; "By model" names each row by its tier through today's routing.
+  const routes = (["fast", "standard", "reasoning"] as const satisfies readonly ModelTier[]).map((tier) => ({
+    tier,
+    model: llm.route(tier).model,
+  }));
 
   return (
     <>
@@ -125,7 +132,7 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
             </Section>
 
             <Section title="By model" description="Every model that answered, and the tokens it read and wrote.">
-              <ModelCostTable rows={usage.byModel} markSimulated={mixedSimulation} />
+              <ModelCostTable rows={usage.byModel} markSimulated={mixedSimulation} routes={routes} />
             </Section>
 
             <Section title="By tool" description="Per-call fees for tools with a real backend. Built-in tools are free.">

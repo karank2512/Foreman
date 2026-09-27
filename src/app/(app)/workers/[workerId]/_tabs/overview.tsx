@@ -116,7 +116,11 @@ export default async function OverviewTab({ session, workerId, workerName }: Wor
             {data.tools.length > 0 ? (
               <p className="text-footnote mt-4 text-pretty text-muted-foreground">
                 {toolSentence(workerName, data.tools)}{" "}
-                <Link href={href("permissions")} className="text-link hover:underline">
+                <Link
+                  href={href("permissions")}
+                  // 44px hit area on phones without changing the inline text size (same band as the other small links).
+                  className="text-link relative hover:underline max-md:before:absolute max-md:before:inset-x-0 max-md:before:top-[calc(50%_-_22px)] max-md:before:h-11"
+                >
                   Change what they can touch ›
                 </Link>
               </p>

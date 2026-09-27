@@ -82,9 +82,11 @@ describe("hire › proposal pipeline (design-core-008)", () => {
 
   it("says how each step works and what the run ends with", () => {
     expect(html).toContain("Thinks · Standard model");
-    expect(html).toContain("Runs as code · Check required fields");
+    expect(html).toContain("Automatic · Check required fields");
+    expect(html).not.toMatch(/as code/i);
     expect(html).toContain("Ends with");
-    expect(html).toContain("Weekly AI Infra Funding Report — ");
+    // {{date}} is filled the way the runtime titles deliverables (yyyy-MM-dd), not as "Sep 27, 2026".
+    expect(html).toMatch(/Weekly AI Infra Funding Report — \d{4}-\d{2}-\d{2}”/);
   });
 });
 

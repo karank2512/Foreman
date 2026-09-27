@@ -58,7 +58,8 @@ function pickTab(raw: string | string[] | undefined): WorkerTab {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const [{ workerId }, query] = await Promise.all([params, searchParams]);
   const worker = await loadHeader(workerId);
-  if (!worker) return { title: "Worker" };
+  // The page renders the 404 for this id; the tab title should say so rather than read like a real profile.
+  if (!worker) return { title: "Worker not found" };
   const tab = pickTab(query.tab);
   return { title: tab === "overview" ? worker.name : `${worker.name} · ${WORKER_TAB_LABELS[tab]}` };
 }

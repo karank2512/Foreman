@@ -37,7 +37,8 @@ function mostCommon(values: string[]): string | undefined {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
 }
 
-export function fixFirst(records: readonly InputRecord[], group: GroupMetric | null, things: string): string[] {
+/** `one` is the singular record noun ("company"); the count line pluralizes it properly. */
+export function fixFirst(records: readonly InputRecord[], group: GroupMetric | null, one: string): string[] {
   if (!group || group.field === "group" || records.length === 0) return [];
   const severity = fieldOf(records, SEVERITY_KEYS);
   const sentiment = fieldOf(records, SENTIMENT_KEYS);
@@ -66,7 +67,7 @@ export function fixFirst(records: readonly InputRecord[], group: GroupMetric | n
     const worst = [...row.items].sort((a, b) => painOf(b) - painOf(a))[0];
     const said = worst && quote ? clip(str(worst[quote]), 140) : "";
     const by = worst && who ? str(worst[who]) : "";
-    return `${i + 1}. **${row.entry.key}** — ${parts.join(", ")} of ${plural(row.entry.count, things.replace(/s$/, ""))}. **Fix:** ${fix.replace(/\.$/, "")}.${said ? ` “${said}”${by ? ` — ${by}` : ""}` : ""}`;
+    return `${i + 1}. **${row.entry.key}** — ${parts.join(", ")} of ${plural(row.entry.count, one)}. **Fix:** ${fix.replace(/\.$/, "")}.${said ? ` “${said}”${by ? ` — ${by}` : ""}` : ""}`;
   });
   return ["### What to fix first", ...lines];
 }

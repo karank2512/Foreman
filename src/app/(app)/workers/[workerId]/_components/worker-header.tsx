@@ -48,9 +48,12 @@ export function WorkerHeader({
         description={
           <>
             <span className="block truncate">{worker.title}</span>
+            {/* Under `md` padding grows the 22px line to a 44px tap box (a `::before` band would be clipped by the
+                truncation's overflow); the negative margins keep the text where it was, 4px under the title.
+                `relative` lifts the box above the title's text, which would otherwise take the taps it overlaps. */}
             <Link
               href={`/jobs/${worker.job.id}`}
-              className="mt-1 block w-fit max-w-full truncate text-[15px] text-link hover:underline"
+              className="relative mt-1 block w-fit max-w-full truncate text-[15px] text-link hover:underline max-md:-mt-[7px] max-md:-mb-[11px] max-md:py-[11px]"
             >
               Hired for {worker.job.title} ›
             </Link>
@@ -192,7 +195,10 @@ function Callout({ tone, text, href, linkLabel }: CalloutSpec) {
       )}
     >
       <p className="min-w-0 flex-1">{text}</p>
-      <Link href={href} className="shrink-0 text-[15px] font-medium text-link hover:underline">
+      <Link
+        href={href}
+        className="relative shrink-0 text-[15px] font-medium text-link hover:underline max-md:before:absolute max-md:before:inset-x-0 max-md:before:top-[calc(50%_-_22px)] max-md:before:h-11"
+      >
         {linkLabel} ›
       </Link>
     </div>

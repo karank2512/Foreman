@@ -1,15 +1,23 @@
+import { format } from "date-fns";
 import type { WorkerProposal } from "@/server/domain";
 import type { ToolMeta } from "@/server/queries/hire";
 import { RelativeTime } from "@/components/relative-time";
 import { SimulatedBadge } from "@/components/simulated-badge";
 import { Card } from "@/components/ui/card";
 import { WorkerAvatar } from "@/components/worker-avatar";
-import { formatDate, formatUsdPrecise, sentenceCase } from "@/lib/format";
+import { formatUsd, sentenceCase } from "@/lib/format";
 import { MODEL_TIER_LABELS, operationLabel } from "../schema";
 
-/** The runtime fills `{{date}}` / `{{job_title}}` on each run; here we show what the first one would be called. */
+/**
+ * The runtime fills `{{date}}` / `{{job_title}}` on each run; here we show what the first one would be called.
+ * Same placeholders and date format as the runtime's `renderTitle` (src/server/runtime/deliverable.ts), so the
+ * title promised here is the one that lands in the deliverables list ("… — 2026-09-27").
+ */
 function exampleDeliverableTitle(template: string, jobTitle: string): string {
-  return template.replaceAll("{{job_title}}", jobTitle).replaceAll("{{date}}", formatDate(new Date()));
+  return template
+    .replace(/\{\{\s*date\s*\}\}/gi, format(new Date(), "yyyy-MM-dd"))
+    .replace(/\{\{\s*job_title\s*\}\}/gi, jobTitle)
+    .trim();
 }
 
 /** "Searches the public web" — the tool in a sentence, with its approval posture as a second clause. */
@@ -89,7 +97,7 @@ export function ProposalResume({
 
         <section className="space-y-1">
           <h2 className="text-callout font-medium text-muted-foreground">Expected cost</h2>
-          <p className="text-metric text-foreground">{formatUsdPrecise(blueprint.costEstimate.perRunUsd)}</p>
+          <p className="text-metric text-foreground">{formatUsd(blueprint.costEstimate.perRunUsd)}</p>
           <p className="text-footnote text-muted-foreground">per run, estimated</p>
         </section>
       </div>
@@ -99,7 +107,7 @@ export function ProposalResume({
 
 /**
  * The pipeline as a numbered list in a card — the same shape the worker profile uses once they are hired. Each
- * row says what the step does and whether it thinks (an LLM step) or just runs code. A vertical list keeps
+ * row says what the step does and whether it thinks (an LLM step) or runs automatically. A vertical list keeps
  * every step visible at any width: no sideways scroller to clip the last steps, no negative margin to push a
  * phone's page wider than its screen, and no row stretched to the height of the tallest one.
  */
@@ -123,7 +131,7 @@ export function ProposalPipeline({ proposal, jobTitle }: { proposal: WorkerPropo
                   <p className="font-medium text-pretty">{component.name}</p>
                   <p className="text-footnote text-pretty text-muted-foreground">{component.description}</p>
                   <p className="text-footnote text-muted-foreground">
-                    {isAgent ? `Thinks · ${MODEL_TIER_LABELS[component.modelTier]}` : `Runs as code · ${operationLabel(component.operation)}`}
+                    {isAgent ? `Thinks · ${MODEL_TIER_LABELS[component.modelTier]}` : `Automatic · ${operationLabel(component.operation)}`}
                   </p>
                 </div>
               </li>
@@ -133,7 +141,7 @@ export function ProposalPipeline({ proposal, jobTitle }: { proposal: WorkerPropo
       </Card>
       <p className="text-callout text-pretty text-muted-foreground">
         Ends with <span className="font-medium text-foreground">“{exampleDeliverableTitle(blueprint.deliverable.titleTemplate, jobTitle)}”</span> as {formatWord}.
-        Steps that run as code are free, fast and give the same answer every time.
+        Automatic steps are free, fast and give the same answer every time.
       </p>
     </div>
   );
