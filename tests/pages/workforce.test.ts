@@ -370,14 +370,18 @@ describe("queries/activity", () => {
     alex = await createHiredWorker(t.organization.id, { name: "Alex" });
     maya = await createHiredWorker(t.organization.id, { name: "Maya" });
     const now = new Date();
+    // Grouping is by LOCAL calendar day, so the five "today" events must stay after midnight even when the suite
+    // runs at 00:30: space them evenly across however much of today has passed (at most an hour apart).
+    const step = Math.min(60 * 60 * 1000, Math.max(1000, (now.getTime() - startOfDay(now).getTime()) / 10));
+    const earlierToday = (n: number) => new Date(now.getTime() - n * step);
     const events = [
       { type: "WORKER_HIRED", title: "You hired Alex", workerId: alex.worker.id, at: subDays(now, 2) },
       { type: "RUN_QUEUED", title: "Alex's run was queued", workerId: alex.worker.id, at: subDays(now, 1) },
-      { type: "RUN_SUCCEEDED", title: "Alex finished a run", workerId: alex.worker.id, at: subHours(now, 5) },
-      { type: "DELIVERABLE_CREATED", title: "Alex delivered a report", workerId: alex.worker.id, at: subHours(now, 4) },
-      { type: "APPROVAL_REQUESTED", title: "Maya wants to send an email", workerId: maya.worker.id, at: subHours(now, 3) },
-      { type: "PERMISSION_CHANGED", title: "You changed Maya's permissions", workerId: maya.worker.id, at: subHours(now, 2) },
-      { type: "NOTE", title: "Schedule updated", workerId: maya.worker.id, at: subHours(now, 1) },
+      { type: "RUN_SUCCEEDED", title: "Alex finished a run", workerId: alex.worker.id, at: earlierToday(5) },
+      { type: "DELIVERABLE_CREATED", title: "Alex delivered a report", workerId: alex.worker.id, at: earlierToday(4) },
+      { type: "APPROVAL_REQUESTED", title: "Maya wants to send an email", workerId: maya.worker.id, at: earlierToday(3) },
+      { type: "PERMISSION_CHANGED", title: "You changed Maya's permissions", workerId: maya.worker.id, at: earlierToday(2) },
+      { type: "NOTE", title: "Schedule updated", workerId: maya.worker.id, at: earlierToday(1) },
     ] as const;
     for (const e of events) {
       await db.activityEvent.create({ data: { organizationId: t.organization.id, type: e.type, title: e.title, workerId: e.workerId, createdAt: e.at } });
