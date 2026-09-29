@@ -129,7 +129,9 @@ describe("root layout (src/app/layout.tsx)", () => {
 
   it("sets the title template and a light theme colour", async () => {
     const source = await read("src/app/layout.tsx");
-    expect(source).toContain('template: "%s · AI Staffing Agency"');
+    expect(source).toContain('template: "%s · Foreman"');
+    expect(source).toContain('applicationName: "Foreman"');
+    expect(source).not.toContain("AI Staffing");
     expect(source).toContain('themeColor: "#ffffff"');
     expect(await read("src/app/(app)/layout.tsx")).toContain('themeColor: "#f5f5f7"');
   });
@@ -151,9 +153,22 @@ describe("app shell", () => {
 
   it("carries the brand's own monochrome glyph, with no tile and no borrowed mark", async () => {
     const logo = await read("src/components/shell/logo.tsx");
-    expect(logo).toContain("AI Staffing Agency");
+    expect(logo).toContain("Foreman");
+    expect(logo).not.toContain("AI Staffing");
     expect(logo).not.toContain("bg-primary");
     expect(logo).not.toContain("uppercase");
+  });
+
+  it("sets one full-length wordmark at every width — the name needs no short form", async () => {
+    const logo = await read("src/components/shell/logo.tsx");
+    expect(logo).not.toMatch(/\bshort\b/);
+    const nav = await read("src/components/shell/global-nav.tsx");
+    expect(nav.match(/<Wordmark\b/g)).toHaveLength(1);
+    expect(nav).toContain('aria-label="Foreman — go to Workforce"');
+    expect(nav).not.toContain("sr-only\">Foreman");
+    const marketing = await read("src/app/(marketing)/_components/marketing-nav.tsx");
+    expect(marketing).toMatch(/whitespace-nowrap">Foreman<\/span>/);
+    expect(marketing).not.toContain("AI Staffing");
   });
 
   it("locks body scroll and traps focus while the mobile menu is open", async () => {

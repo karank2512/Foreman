@@ -1,4 +1,4 @@
-// AI Staffing Agency — core data model.
+// Foreman — core data model.
 //
 // Key invariant: Job → many WorkerVersions → many Runs.
 //   * A Worker is a persistent identity (the "seat" on a Job).

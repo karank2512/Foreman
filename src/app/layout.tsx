@@ -18,10 +18,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: "AI Staffing Agency", template: "%s · AI Staffing Agency" },
+  title: { default: "Foreman — the staffing agency for AI workers", template: "%s · Foreman" },
   description:
     "Describe the job in plain English. We scope it, design an AI worker for it, and put them on a schedule — with every deliverable reviewed, scored and yours to keep.",
-  applicationName: "AI Staffing Agency",
+  applicationName: "Foreman",
 };
 
 export const viewport: Viewport = {

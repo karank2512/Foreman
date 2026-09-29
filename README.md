@@ -1,4 +1,4 @@
-# AI Staffing Agency
+# Foreman
 
 **The staffing agency for AI workers.** Describe a job in plain English; the platform scopes it, designs the right AI worker, puts it to work on a schedule, measures its performance, and lets you improve or replace it — exactly like managing a contractor.
 

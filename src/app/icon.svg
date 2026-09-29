@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><style>.bg{fill:#fff}.ink{color:#1d1d1f}@media (prefers-color-scheme:dark){.bg{fill:#1d1d1f}.ink{color:#f5f5f7}}</style>
+  <rect class="bg" width="24" height="24" rx="5.5" fill="#fff"/>
+  <g class="ink" transform="translate(12 12) scale(0.92) translate(-12 -11.8)" color="#1d1d1f">
+    <path d="M12 9.2v3.1m0 0-4.6 3.2m4.6-3.2 4.6 3.2" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+    <circle cx="12" cy="6.4" r="2.9" fill="currentColor"/>
+    <circle cx="6.4" cy="17.2" r="2.5" fill="currentColor" fill-opacity="0.72"/>
+    <circle cx="17.6" cy="17.2" r="2.5" fill="currentColor" fill-opacity="0.72"/>
+  </g>
+</svg>

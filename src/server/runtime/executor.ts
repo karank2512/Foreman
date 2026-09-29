@@ -33,7 +33,7 @@ interface ExecutorRegistry {
   stop: (graceMs: number) => Promise<void>;
 }
 
-const registry = globalThis as unknown as { __aiStaffingExecutor?: ExecutorRegistry };
+const registry = globalThis as unknown as { __foremanExecutor?: ExecutorRegistry };
 
 function sleeper() {
   let wake: (() => void) | undefined;
@@ -56,7 +56,7 @@ function delay(ms: number): Promise<void> {
 }
 
 export function startExecutor(): void {
-  const previous = registry.__aiStaffingExecutor;
+  const previous = registry.__foremanExecutor;
   if (previous) void previous.stop(config.executor.shutdownGraceMs);
   const generation = (previous?.generation ?? 0) + 1;
   const host = hostname();
@@ -190,7 +190,7 @@ export function startExecutor(): void {
     runLog.info("executor.stopped");
   };
 
-  registry.__aiStaffingExecutor = { generation, stop };
+  registry.__foremanExecutor = { generation, stop };
 }
 
 /**
@@ -198,8 +198,8 @@ export function startExecutor(): void {
  * every still-running lease to the queue without burning a retry attempt.
  */
 export async function stopExecutor(opts: { graceMs?: number } = {}): Promise<void> {
-  const current = registry.__aiStaffingExecutor;
+  const current = registry.__foremanExecutor;
   if (!current) return;
-  registry.__aiStaffingExecutor = undefined;
+  registry.__foremanExecutor = undefined;
   await current.stop(opts.graceMs ?? config.executor.shutdownGraceMs);
 }

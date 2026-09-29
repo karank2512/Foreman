@@ -85,7 +85,7 @@ function MockNav() {
     <div className="flex h-12 items-center gap-6 bg-[rgb(251_251_253_/_0.86)] px-5 shadow-[inset_0_-0.5px_0_var(--hairline)] backdrop-blur-[20px]">
       <span className="inline-flex items-center gap-1.5">
         <LogoGlyph className="size-4" />
-        <span className="text-[13px] leading-none font-semibold tracking-[-0.02em]">AI Staffing Agency</span>
+        <span className="text-[13px] leading-none font-semibold tracking-[-0.02em]">Foreman</span>
       </span>
       <span className="hidden items-center gap-5 text-[12px] font-medium sm:flex">
         <span className="relative font-semibold after:absolute after:top-[calc(100%+5px)] after:left-0 after:h-0.5 after:w-4 after:rounded-full after:bg-foreground">

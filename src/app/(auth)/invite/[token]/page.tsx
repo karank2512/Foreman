@@ -8,7 +8,7 @@ import { AcceptInviteForm } from "./accept-invite-form";
 
 export const metadata: Metadata = {
   title: "Join a workspace",
-  description: "Accept your invitation and join your team's AI Staffing Agency workspace.",
+  description: "Accept your invitation and join your team's Foreman workspace.",
   robots: { index: false, follow: false },
 };
 

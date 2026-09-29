@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const summary = await seedDemo(db, { log: verbose ? (line) => console.log(line) : undefined });
   console.log(`Seeded the demo workspace in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   console.log(`  organization ${summary.organizationId} · workers Alex, Maya, Sam · pending approval ${summary.pendingApprovalId}`);
-  console.log("  sign in as demo@aistaffing.dev / demo1234");
+  console.log("  sign in as demo@foreman.example / demo1234");
 }
 
 const invokedDirectly = /(^|[\\/])seed\.ts$/.test(process.argv[1] ?? "");

@@ -27,7 +27,7 @@ export function AuthNav({ signUpOpen }: { signUpOpen: boolean }) {
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-sm outline-none">
           <LogoGlyph />
           <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap">
-            AI Staffing Agency
+            Foreman
           </span>
         </Link>
 

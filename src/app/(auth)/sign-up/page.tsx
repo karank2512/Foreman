@@ -9,7 +9,7 @@ import { SignUpForm } from "./sign-up-form";
 export const metadata: Metadata = {
   title: "Create your account",
   description:
-    "Create an AI Staffing Agency workspace. Describe a job in plain English and put your first AI worker on it today.",
+    "Create a Foreman workspace. Describe a job in plain English and put your first AI worker on it today.",
 };
 
 /**

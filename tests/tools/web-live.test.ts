@@ -100,7 +100,7 @@ Foo Ventures.</p><div><p>Second paragraph.</p></div>
     expect(result.text).not.toMatch(/ {2}|\n{3}/);
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(init.redirect).toBe("manual");
-    expect((init.headers as Record<string, string>)["user-agent"]).toContain("AIStaffingAgency");
+    expect((init.headers as Record<string, string>)["user-agent"]).toContain("Foreman");
   });
 
   it("falls back to the h1 / host when there is no <title> and works without <body>", () => {

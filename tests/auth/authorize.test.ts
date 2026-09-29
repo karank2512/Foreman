@@ -305,6 +305,6 @@ describe("authorizeCredentials — throttling", () => {
 
 describe("normalizeEmail", () => {
   it("trims and lowercases", () => {
-    expect(normalizeEmail("  Demo@AIStaffing.DEV \n")).toBe("demo@aistaffing.dev");
+    expect(normalizeEmail("  Demo@Foreman.Example \n")).toBe("demo@foreman.example");
   });
 });

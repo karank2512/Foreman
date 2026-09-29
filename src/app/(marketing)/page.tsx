@@ -24,17 +24,17 @@ const SHARE_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "AI Staffing Agency — describe the job, meet your new hire.",
+  alt: "Foreman, the staffing agency for AI workers — describe the job, meet your new hire.",
 };
 
 export const metadata: Metadata = {
-  // The root template appends "· AI Staffing Agency"; the landing page carries the whole name itself.
-  title: { absolute: "AI Staffing Agency — hire AI workers like contractors" },
+  // The root template appends "· Foreman"; the landing page says what Foreman is in its own title instead.
+  title: { absolute: "Foreman — hire AI workers like contractors" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "AI Staffing Agency",
+    siteName: "Foreman",
     title: SHARE_TITLE,
     description: DESCRIPTION,
     url: "/",

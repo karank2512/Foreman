@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
  * The share card for every route that doesn't define its own: the product's headline set in the brand's own
  * type and colours on white, with the three-node glyph. No photography, no logos, no gradients.
  */
-export const alt = "AI Staffing Agency — describe the job, meet your new hire.";
+export const alt = "Foreman, the staffing agency for AI workers — describe the job, meet your new hire.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -88,7 +88,7 @@ export default async function OpengraphImage() {
             <circle cx="6.4" cy="17.2" r="2.5" fill={INK} fillOpacity="0.72" />
             <circle cx="17.6" cy="17.2" r="2.5" fill={INK} fillOpacity="0.72" />
           </svg>
-          <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: "-0.02em" }}>AI Staffing Agency</div>
+          <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: "-0.02em" }}>Foreman</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>

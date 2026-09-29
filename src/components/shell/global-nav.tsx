@@ -38,10 +38,8 @@ export function GlobalNav({ user, simulated, pendingApprovals }: GlobalNavProps)
     <header className="material-nav sticky top-0 z-40 h-(--nav-height)">
       <div className="mx-auto flex h-full w-full max-w-(--container-app) items-center px-4 sm:px-6">
         {/* 44px tall inside the 48px bar: on a phone the wordmark is the way home, so it gets a full tap box. */}
-        <Link href="/workforce" className="flex h-11 items-center rounded-sm outline-none">
-          <Wordmark short className="md:hidden" />
-          <Wordmark className="hidden md:inline-flex" />
-          <span className="sr-only">AI Staffing Agency — go to Workforce</span>
+        <Link href="/workforce" aria-label="Foreman — go to Workforce" className="flex h-11 items-center rounded-sm outline-none">
+          <Wordmark />
         </Link>
 
         <nav aria-label="Main" className="ml-9 hidden items-center gap-7 md:flex">

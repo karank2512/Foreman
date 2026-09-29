@@ -22,18 +22,16 @@ export function LogoGlyph({ className }: { className?: string }) {
 }
 
 export interface WordmarkProps {
-  /** Shorten the name to "AI Staffing" where the bar is tight (the mobile nav). */
-  short?: boolean;
   className?: string;
 }
 
 /** Glyph + name on one line, 15px/600. The only brand lockup in the product. */
-export function Wordmark({ short = false, className }: WordmarkProps) {
+export function Wordmark({ className }: WordmarkProps) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoGlyph />
       <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap text-foreground">
-        {short ? "AI Staffing" : "AI Staffing Agency"}
+        Foreman
       </span>
     </span>
   );

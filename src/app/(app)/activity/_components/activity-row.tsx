@@ -23,7 +23,7 @@ function Actor({ item }: { item: ActivityItem }) {
     );
   }
   return (
-    <span role="img" aria-label="AI Staffing Agency" className={shell}>
+    <span role="img" aria-label="Foreman" className={shell}>
       <LogoGlyph className="size-4 text-muted-foreground" />
     </span>
   );

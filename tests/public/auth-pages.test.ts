@@ -77,7 +77,7 @@ describe("consent copy (design-public-auth-005)", () => {
   it("drops the unlinked Privacy · Terms words from the auth footer", async () => {
     const layout = await read(`${AUTH}layout.tsx`);
     const footer = layout.slice(layout.indexOf("<footer"), layout.indexOf("</footer>"));
-    expect(footer).toContain("AI Staffing Agency");
+    expect(footer).toContain("Foreman");
     expect(footer).not.toContain("Privacy");
     expect(footer).not.toContain("Terms");
   });

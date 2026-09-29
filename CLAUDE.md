@@ -1,6 +1,8 @@
-# AI Staffing Agency — engineering guide
+# Foreman — engineering guide
 
-**Product:** the staffing agency for AI workers. A company describes a job in plain English → the platform scopes it (JobSpec) → designs an AI worker (WorkerBlueprint) → the user *hires* it → it executes runs → produces deliverables → is evaluated → can be talked to, improved, or *replaced* like a contractor. Core loop: **Job → Worker → Runs → Deliverables → Evaluation → Replace.**
+**Product:** Foreman — the staffing agency for AI workers. A company describes a job in plain English → the platform scopes it (JobSpec) → designs an AI worker (WorkerBlueprint) → the user *hires* it → it executes runs → produces deliverables → is evaluated → can be talked to, improved, or *replaced* like a contractor. Core loop: **Job → Worker → Runs → Deliverables → Evaluation → Replace.**
+
+**Name:** the product was renamed from "AI Staffing Agency" to Foreman; the folder on disk, the database names (`ai_staffing_agency`, `ai_staffing_agency_test`, `ai_staffing_agency_shadow`), and the docker-compose project name (`ai-staffing-agency`) still use the old name — leave them unless your task says otherwise. The demo login is `demo@foreman.example`.
 
 **Read `docs/CONTRACTS.md` before writing any code.** For the production/security/redesign phase also read `docs/PRODUCTION.md` (contracts + file ownership that override the FROZEN list for assigned files) and `docs/DESIGN.md` (the design system every UI change follows). It defines module boundaries, public function signatures, and file ownership. The typed contracts live in code: `prisma/schema.prisma`, `src/server/domain/*`, `src/server/*/types.ts`.
 

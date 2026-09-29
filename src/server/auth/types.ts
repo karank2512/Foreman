@@ -11,7 +11,7 @@ export interface SessionContext {
 }
 
 export const DEMO_USER = {
-  email: "demo@aistaffing.dev",
+  email: "demo@foreman.example",
   password: "demo1234",
   name: "Demo User",
   organizationName: "Acme Robotics",

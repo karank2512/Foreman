@@ -30,7 +30,7 @@ export default function AuthLayout({ children }: Readonly<{ children: ReactNode 
 
       {/* Privacy and Terms pages aren't written yet, so the footer doesn't pretend to link to them. */}
       <footer className="px-4 pb-8 text-center text-[12px] leading-4 text-muted-foreground sm:px-6">
-        <p>&copy; {new Date().getFullYear()} AI Staffing Agency</p>
+        <p>&copy; {new Date().getFullYear()} Foreman</p>
       </footer>
     </div>
   );

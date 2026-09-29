@@ -10,7 +10,7 @@ import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to your AI Staffing Agency workspace to check on your workers and review their work.",
+  description: "Sign in to your Foreman workspace to check on your workers and review their work.",
   robots: { index: false, follow: false },
 };
 
@@ -57,7 +57,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
 
       {signUpOpen ? (
         <p className="mt-10 border-t border-border pt-6 text-[15px] leading-[22px] text-muted-foreground">
-          New to AI Staffing Agency?{" "}
+          New to Foreman?{" "}
           <Link href={SIGN_UP_PATH} className="-my-[11px] inline-block py-[11px] font-medium text-link hover:underline">
             Create an account <span aria-hidden>›</span>
           </Link>

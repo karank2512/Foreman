@@ -16,7 +16,7 @@ export const MAX_TEXT_CHARS = 12_000;
  */
 export const MAX_URL_CHARS = 2_048;
 const MAX_REDIRECTS = 3;
-const USER_AGENT = "AIStaffingAgency/0.1 (+research worker; reads public pages)";
+const USER_AGENT = "Foreman/0.1 (+research worker; reads public pages)";
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 type PageKind = "html" | "text" | "json";

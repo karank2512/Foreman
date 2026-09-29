@@ -40,7 +40,7 @@ Calm, confident, product-first. Hierarchy comes from **type size and whitespace*
 
 ```tsx
 // src/app/(app)/workforce/page.tsx — server component
-export const metadata: Metadata = { title: "Workforce" };          // → "Workforce · AI Staffing Agency"
+export const metadata: Metadata = { title: "Workforce" };          // → "Workforce · Foreman"
 
 export default async function WorkforcePage() {
   const s = await requireSession();

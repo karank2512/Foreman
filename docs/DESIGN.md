@@ -19,7 +19,7 @@ Design language: "Quiet confidence". The goal is the calm, product-first feel of
 9. Motion explains, never decorates. Use 200–400ms ease-out fades and 8–16px slide-ups for things entering the viewport or opening. No bouncing, no parallax, no shimmering gradients, no infinite animations except a live "running" dot. Honor prefers-reduced-motion everywhere.
 10. Real UI instead of illustration. Marketing visuals are real HTML/CSS mock cards built from the product's own components. There are no stock images, 3D blobs, gradient orbs, emoji or AI-art.
 11. Mobile is a first-class layout, not a squashed desktop. Keep 16px side gutters, 44px minimum touch targets, and 16px minimum input text (so iOS doesn't zoom). The nav collapses to a full-screen frosted menu, and sticky bottom action bars replace right-aligned header buttons.
-12. The brand is original. The wordmark is "AI Staffing Agency" with its own three-node glyph in monochrome. No fruit logos, no product names or imagery from any other company, and no borrowed marketing copy. We borrow a sensibility, not assets.
+12. The brand is original. The wordmark is "Foreman" with its own three-node glyph in monochrome. No fruit logos, no product names or imagery from any other company, and no borrowed marketing copy. We borrow a sensibility, not assets.
 
 ## Tokens (`src/app/globals.css`)
 
@@ -300,7 +300,7 @@ APP SHELL: replace the left sidebar with a global frosted top nav and page-level
 
 1. Global nav (new `src/components/shell/global-nav.tsx`; AppShell keeps its props: user, simulated, pendingApprovals)
 - `position: sticky; top: 0; z-40; height: var(--nav-height)` (48px). Apply the `material-nav` utility (rgba(251,251,253,.8), saturate(180%) blur(20px), 0.5px bottom hairline). The inner container is max-w-[1200px] with px-4 sm:px-6.
-- Left: the wordmark links to /workforce. The glyph is the existing three-node SVG, drawn in #1d1d1f at 20px with no colored tile. "AI Staffing Agency" is set in 15px weight 600 at -0.02em on one line. Drop the stacked "AGENCY" caps.
+- Left: the wordmark links to /workforce. The glyph is the existing three-node SVG, drawn in #1d1d1f at 20px with no colored tile. "Foreman" is set in 15px weight 600 at -0.02em on one line.
 - Center-left (md+): primary sections as plain text links at 13px/500, gap-7. Rest color is #1d1d1f at 80% opacity. Hover goes to 100%. Active is 100% with weight 600, plus a 2px × 16px rounded underline 6px below the text, drawn in foreground (not blue). The links are Workforce, Jobs, Approvals and Activity. There are no icons.
 - Approvals count: show a small 18px-high pill after the label when there are pending items. It is var(--warning-soft) with var(--warning) text, 11px/600 tabular-nums, and an aria-label like "3 pending approvals". This is the only colored element in the nav.
 - Right cluster, gap-3:
@@ -311,7 +311,7 @@ APP SHELL: replace the left sidebar with a global frosted top nav and page-level
 - The skip link remains the first focusable element.
 
 2. Mobile (under 768px)
-- The same 48px frosted bar holds the wordmark (glyph plus "AI Staffing"), the Simulated dot-chip (dot only, with aria-label), and a two-line menu button (2 × 16px bars, 1.5px thick, 6px apart). The menu button morphs into an X over 240ms.
+- The same 48px frosted bar holds the wordmark (glyph plus "Foreman"), the Simulated dot-chip (dot only, with aria-label), and a two-line menu button (2 × 16px bars, 1.5px thick, 6px apart). The menu button morphs into an X over 240ms.
 - Open state: a full-screen overlay below the bar with bg rgba(251,251,253,.96) and blur. It lists links at 28px/600 with -0.015em tracking and 12px vertical gap, 32px from the top, 16px gutters. The links are Workforce, Jobs, Approvals (count), Activity, then a 32px gap, then Usage and Settings at 17px/500 in secondary color. A full-width "Hire a worker" primary pill (h-12) sits at the bottom, with the org, email and "Sign out" in 13px.
 - Links stagger in at 20ms apart with opacity 0→1 and translateY(-8px→0) over 280ms ease-out. With reduced motion there is no transform and the overlay appears instantly. Body scroll is locked while open. Close on route change (keep the current usePathname effect) and on Escape. Focus is trapped inside the overlay.
 - The old left Sheet (MobileNav) is deleted, and so is the SidebarNav.
@@ -514,7 +514,7 @@ GLOBAL FOR THE APP
 2. SIGN-IN (/sign-in)
 - Delete the dot-grid backdrop, the radial glow and the BriefcaseBusiness tile.
 - Layout: white page, marketing nav on top (wordmark only, plus "Create account" at right). The content column is max-w-[400px], centered, with pt-[12vh].
-- Hierarchy: 40px glyph → H1 "Sign in" (headline, 40px) → 17px secondary "Pick up where your team left off." → floating-label Email (h-14) → floating-label Password with a show/hide text toggle ("Show") inside the field → "Keep me signed in" checkbox (optional) → primary pill "Sign in" (lg, full width, h-11) → a centered 14px link "Forgot password?" (only if the reset flow ships; otherwise omit it) → hairline → 15px "New to AI Staffing Agency? Create an account ›".
+- Hierarchy: 40px glyph → H1 "Sign in" (headline, 40px) → 17px secondary "Pick up where your team left off." → floating-label Email (h-14) → floating-label Password with a show/hide text toggle ("Show") inside the field → "Keep me signed in" checkbox (optional) → primary pill "Sign in" (lg, full width, h-11) → a centered 14px link "Forgot password?" (only if the reset flow ships; otherwise omit it) → hairline → 15px "New to Foreman? Create an account ›".
 - Errors: one inline alert above the fields (bg danger-soft, 14px danger text, rounded-12). Never reveal whether the email exists.
 - Session-expired: a neutral info alert, "Your session ended. Sign in again to continue."
 - Demo credentials: remove the prefill entirely in production. Only when `NODE_ENV !== "production"` or a DEMO_MODE env flag is set, show a secondary pill "Explore the demo workspace" below the form that fills and submits.
@@ -662,7 +662,7 @@ GLOBAL FOR THE APP
 Public marketing page at "/". All copy below is original to this brand. Layout follows the premium-consumer rhythm: full-bleed sections alternating white (#fff) and light gray (#f5f5f7), centered headlines, and generous vertical padding (var(--space-section-marketing)). Content width is 1024px and the text column is 692px. Every visual is HTML/CSS mock cards built from the product's own components, with static sample data, wrapped in `role="img"` plus a descriptive aria-label (or aria-hidden with an adjacent caption). There are no images, gradients, blobs or emoji.
 
 0. NAV (frosted, 48px, sticky)
-- Wordmark "AI Staffing Agency".
+- Wordmark "Foreman".
 - Links: How it works · Product · Security · Pricing.
 - Right: "Sign in" (text) and "Get started" (small primary pill).
 
@@ -743,7 +743,7 @@ Public marketing page at "/". All copy below is original to this brand. Layout f
   - Company: About, Contact.
   - Resources: Help center, Status.
   - Legal: Privacy, Terms.
-- Bottom row: "© 2026 AI Staffing Agency. All rights reserved." at left and "Made for teams who'd rather review than repeat." at right.
+- Bottom row: "© 2026 Foreman. All rights reserved." at left and "Made for teams who'd rather review than repeat." at right.
 - Don't link pages that don't exist. Omit them until built.
 
 Motion on the landing page: each section's headline, body and mock get the Reveal treatment (fade + 16px rise, 400ms ease-out, 60ms stagger, once per element, threshold 0.2).
@@ -796,7 +796,7 @@ SPECIFICS
 5. Badge overload (worker cards show status + health + run badges + a Simulated badge on the section). Remedy: one status per object as a dot plus word, health merged into the score, and Simulated shown globally once plus inline on generated artifacts.
 6. Borders on everything, nested bordered boxes (card ring → bg-muted/40 bordered fact grid) and dashed outlines. Remedy: cards with no border and a soft shadow on a gray canvas, inset panels as flat #f5f5f7 fills, and hairlines only between list rows.
 7. Equal-weight everything (14px text everywhere, 20px page titles barely larger than body, 4 identical KPI tiles). Remedy: a steep type scale (32px page titles, 22px sections, 15px body) and one clear focal point per page. Group KPIs into one strip.
-8. Uppercase tracked micro-labels ("WORKSPACE", "AGENCY", the `eyebrow` utility). Remedy: sentence-case 13px semibold secondary labels. Use eyebrows only on marketing, once per section.
+8. Uppercase tracked micro-labels ("WORKSPACE", the `eyebrow` utility). Remedy: sentence-case 13px semibold secondary labels. Use eyebrows only on marketing, once per section.
 9. Dense cards stuffed with label:value grids. Remedy: lead with one human sentence, demote metadata to 13px secondary, and move detail into the profile.
 10. Generic SaaS copy ("Supercharge your workflow", "Unlock the power of AI", "Seamless", "Revolutionize"). Remedy: concrete, contractor-style copy that names the outcome ("Every Monday, a digest of what competitors shipped").
 11. Colored tinted toasts and alert boxes with left accent borders. Remedy: white material toasts with a small tone icon. Callouts are soft-tinted panels with no side stripe.

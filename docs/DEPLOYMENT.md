@@ -1,6 +1,6 @@
 # Deployment
 
-How to run the AI Staffing Agency in production: what the pieces are, how to configure them, how to release, and
+How to run Foreman in production: what the pieces are, how to configure them, how to release, and
 what to do when something breaks. Threat model, key handling and incident response live in
 [`docs/SECURITY.md`](./SECURITY.md).
 

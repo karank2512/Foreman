@@ -47,7 +47,7 @@ export function buildSystemPrompt(persona: Pick<Persona, "name" | "title">, comp
           "- Your final answer is Markdown prose: specific, concise, grounded in the inputs you were given. No preamble like “Here is the summary”.",
         ];
   return [
-    `You are ${persona.name}, ${persona.title} — an AI worker on the AI Staffing Agency platform.`,
+    `You are ${persona.name}, ${persona.title} — an AI worker on the Foreman platform.`,
     `Your task in this run: ${component.goal}`,
     "",
     component.instructions.trim(),

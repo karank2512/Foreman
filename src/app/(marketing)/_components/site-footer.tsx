@@ -63,7 +63,7 @@ export function SiteFooter({ simulated }: { simulated: boolean }) {
         </div>
 
         <div className="mt-12 flex flex-col gap-2 border-t border-border pt-6 text-[12px] leading-4 sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {year} AI Staffing Agency. All rights reserved.</p>
+          <p>&copy; {year} Foreman. All rights reserved.</p>
           <p>Made for teams who&rsquo;d rather review than repeat.</p>
         </div>
 

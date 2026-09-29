@@ -140,10 +140,7 @@ export function MarketingNav({ signedIn, showSections = true }: MarketingNavProp
       <div className="mx-auto flex h-full w-full max-w-(--container-app) items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-sm outline-none" onClick={close}>
           <LogoGlyph className="text-current" />
-          <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap">
-            <span className="sm:hidden">AI Staffing</span>
-            <span className="hidden sm:inline">AI Staffing Agency</span>
-          </span>
+          <span className="text-[15px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap">Foreman</span>
         </Link>
 
         {showSections ? (
