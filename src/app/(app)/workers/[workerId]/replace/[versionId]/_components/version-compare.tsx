@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Stat, StatStrip } from "@/components/stat-card";
 import { Card } from "@/components/ui/card";
-import { formatDuration, formatNumber, formatPercent, formatUsd, formatUsdPrecise, pluralize } from "@/lib/format";
+import { formatDuration, formatNumber, formatPercent, formatUsd, pluralize } from "@/lib/format";
 import { SCORE_BAND_CLASSES, scoreBand } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { EstimatedDeltasView, VersionCard } from "@/server/queries/worker-manage";
@@ -56,8 +56,8 @@ export function EstimatedDeltas({
         value={signed(deltas.costPct)}
         hint={
           base
-            ? `${formatUsdPrecise(base.costPerRunUsd)} → ${formatUsdPrecise(target.costPerRunUsd)}`
-            : `${formatUsdPrecise(target.costPerRunUsd)} a run`
+            ? `${formatUsd(base.costPerRunUsd)} → ${formatUsd(target.costPerRunUsd)}`
+            : `${formatUsd(target.costPerRunUsd)} a run`
         }
         trend={{ direction: direction(deltas.costPct), tone: tone(deltas.costPct, false) }}
       />
@@ -162,7 +162,7 @@ function rowsFor(base: VersionCard | null, target: VersionCard): CompareRow[] {
   );
   const cost = (c: VersionCard) => (
     <>
-      <span className="metric">{formatUsdPrecise(c.costPerRunUsd)}</span>
+      <span className="metric">{formatUsd(c.costPerRunUsd)}</span>
       <span className="text-footnote block text-muted-foreground">
         about {formatUsd(c.monthlyUsd)} a month at {formatNumber(c.runsPerMonth, 1)} runs
       </span>
