@@ -2,7 +2,7 @@ import { endOfDay, startOfDay, subDays } from "date-fns";
 import { config } from "@/server/config";
 import { db } from "@/server/db";
 import { titleCase } from "@/lib/format";
-import { llm } from "@/server/models";
+import { isOrgSimulated, llm } from "@/server/models";
 import { tools } from "@/server/tools";
 import { getUsageSummary, type UsageSummary } from "@/server/usage";
 
@@ -97,7 +97,7 @@ export async function getUsagePage(organizationId: string, days: UsageRangeDays,
     days,
     from: summary.from,
     to: summary.to,
-    simulatedMode: llm.isSimulated(),
+    simulatedMode: await isOrgSimulated(organizationId),
     marginMultiplier: config.usage.marginMultiplier,
     hasUsage: totals.modelCalls + totals.toolCalls > 0,
     totals: {

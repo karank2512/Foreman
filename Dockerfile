@@ -5,6 +5,11 @@
 #   worker   → node dist/worker.cjs      (the run executor)
 #   migrate  → npx prisma migrate deploy (one-shot release job, run before rolling web/worker)
 #
+# docker-compose.yml (self-hosting on your own machine) additionally uses docker/entrypoint.sh, which generates the
+# app secrets on first boot, and dist/seed-demo.cjs, which seeds the demo workspace once. Neither runs unless the
+# compose file asks for it. dist/smoke-live.cjs is `npm run smoke:live` for people without Node on the host:
+#   docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs
+#
 # Debian slim rather than Alpine: Prisma's query engine ships a glibc/OpenSSL 3 binary, so this avoids adding a
 # musl binaryTarget to the frozen schema.
 
@@ -30,7 +35,11 @@ COPY . .
 # The migration manifest (npm prebuild) is what /api/ready compares against the database.
 RUN npx prisma generate \
  && npm run build \
- && npm run build:worker
+ && npm run build:worker \
+ && npx esbuild docker/seed-demo.ts --bundle --platform=node --target=node22 --format=cjs --packages=external \
+      --tsconfig=tsconfig.json --outfile=dist/seed-demo.cjs \
+ && npx esbuild scripts/smoke-live.ts --bundle --platform=node --target=node22 --format=cjs --packages=external \
+      --tsconfig=tsconfig.json --outfile=dist/smoke-live.cjs
 
 # ── prod-deps: runtime dependency tree (no devDependencies) ─────────────────────
 # The worker bundle and the prisma CLI both resolve from here; the standalone server overlays its traced copies.
@@ -58,9 +67,15 @@ COPY --from=build     --chown=node:node /app/public ./public
 COPY --from=build     --chown=node:node /app/dist ./dist
 # schema + migrations for the release job
 COPY --from=build     --chown=node:node /app/prisma ./prisma
+COPY --from=build     --chown=node:node /app/docker/entrypoint.sh ./docker/entrypoint.sh
 
-# Next writes its ISR/image cache here.
-RUN mkdir -p .next/cache && chown -R node:node .next
+# Next writes its ISR/image cache here. /var/lib/foreman is where the compose stack keeps its generated secrets:
+# a fresh named volume inherits this directory's owner, so the non-root user can write it. The entrypoint is
+# normalised in case a Windows checkout gave it CRLF line endings.
+RUN mkdir -p .next/cache /var/lib/foreman \
+ && chown -R node:node .next /var/lib/foreman \
+ && chmod 700 /var/lib/foreman \
+ && sed -i 's/\r$//' docker/entrypoint.sh
 
 USER node
 EXPOSE 3000

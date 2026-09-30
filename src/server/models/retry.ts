@@ -1,3 +1,5 @@
+import { isQuotaExhausted } from "./provider-errors";
+
 /**
  * Our own retry policy for live provider calls (the SDK's is disabled with `maxRetries: 0` so attempts, backoff and
  * the final error are under our control). Error classification is structural — no SDK import needed.
@@ -38,6 +40,8 @@ export function isTransientError(e: unknown, depth = 0): boolean {
   const err = asErrorLike(e);
   if (!err || depth > 3) return false;
 
+  // An empty balance answers 429 on OpenAI, but no amount of waiting refills it.
+  if (isQuotaExhausted(err)) return false;
   if (typeof err.statusCode === "number") return err.statusCode >= 500 || TRANSIENT_STATUS.has(err.statusCode);
   if (err.isRetryable === true) return true;
   if (err.name === "TimeoutError") return true;

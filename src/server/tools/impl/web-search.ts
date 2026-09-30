@@ -43,6 +43,15 @@ export function mapTavilyResults(raw: unknown, maxResults: number): SearchResult
   }));
 }
 
+/** What to do about a Tavily error status (https://docs.tavily.com — 432/433 are Tavily's plan / spend caps). */
+export function tavilyHint(status: number): string {
+  if (status === 401 || status === 403) return " — check the Tavily API key (TAVILY_API_KEY in Settings → Tool credentials, or your .env)";
+  if (status === 429) return " — Tavily is rate-limiting this key; wait a minute and try again";
+  if (status === 432 || status === 433) return " — this Tavily key has used up its plan or spending limit; raise it at tavily.com";
+  if (status >= 500) return " — Tavily is having trouble; try again in a few minutes";
+  return "";
+}
+
 /**
  * Live search via Tavily. Any failure (network, timeout, auth, quota, bad JSON) is surfaced as an error — with a
  * real key configured we never quietly substitute simulated results, which would poison a deliverable.
@@ -64,8 +73,8 @@ export async function tavilySearch(apiKey: string, query: string, maxResults: nu
       throw new AppError("TOOL_ERROR", `Web search failed: ${reason}`);
     }
     if (!response.ok) {
-      const hint = response.status === 401 || response.status === 403 ? " — check the Tavily API key in Settings" : "";
-      throw new AppError("TOOL_ERROR", `Web search failed: Tavily responded with HTTP ${response.status}${hint}`);
+      await response.body?.cancel().catch(() => undefined);
+      throw new AppError("TOOL_ERROR", `Web search failed: Tavily responded with HTTP ${response.status}${tavilyHint(response.status)}`);
     }
     let body: unknown;
     try {

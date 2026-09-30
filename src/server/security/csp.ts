@@ -26,6 +26,12 @@ export interface CspOptions {
   nonce: string;
   /** Dev needs 'unsafe-eval' (React refresh / source maps) and websocket connections (HMR). */
   dev?: boolean;
+  /**
+   * `upgrade-insecure-requests` (default: on outside dev). Only an app deliberately served over plain http turns
+   * it off — the self-hosted stack on http://localhost — because WebKit (Safari) upgrades same-origin
+   * subresources even on localhost, so every script would be requested over https and the page never hydrates.
+   */
+  upgradeInsecureRequests?: boolean;
 }
 
 /**
@@ -35,7 +41,7 @@ export interface CspOptions {
  *   renders raw HTML (the markdown renderer builds React elements), so the residual risk is low.
  * - `img-src data: blob:` and `font-src data:`: inline SVG data URIs and self-hosted font fallbacks.
  */
-export function buildCsp({ nonce, dev = false }: CspOptions): string {
+export function buildCsp({ nonce, dev = false, upgradeInsecureRequests = !dev }: CspOptions): string {
   if (!NONCE_PATTERN.test(nonce)) {
     throw new Error("buildCsp: nonce must be a base64-ish token of 16-128 characters");
   }
@@ -54,7 +60,7 @@ export function buildCsp({ nonce, dev = false }: CspOptions): string {
     "worker-src 'self' blob:",
     "manifest-src 'self'",
   ];
-  if (!dev) directives.push("upgrade-insecure-requests");
+  if (upgradeInsecureRequests) directives.push("upgrade-insecure-requests");
   return directives.join("; ");
 }
 

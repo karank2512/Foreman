@@ -9,6 +9,7 @@ export {
   refreshWorkerScore,
   runScore,
   DEFAULT_SCORE_RUN_WINDOW,
+  PROVIDER_SETUP_FAILURE_MARKER,
 } from "./score";
 export type { EvaluationPart, EvaluationWeights, ScoreParts } from "./score";
 export { assessHealth } from "./health";

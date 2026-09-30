@@ -1,10 +1,12 @@
+import { db } from "@/server/db";
 import { AppError, errorMessage, isAppError } from "@/server/errors";
 import { assertOrgActive, assertWithinBudget, redactAndClip } from "@/server/security";
 import { buildRequestTrace, buildResponseTrace, recordModelCall, type RequestTrace, type ResponseTrace } from "./persist";
 import { computeCostUsd, priceFor } from "./pricing";
+import { toProviderAppError } from "./provider-errors";
 import { createAiSdkProvider } from "./providers/ai-sdk";
 import { mockProvider } from "./providers/mock";
-import { getStatus, isSimulated, providerLabel, routeTier } from "./registry";
+import { MOCK_TIER_MODELS, getStatus, isSimulated, routeTier } from "./registry";
 import type {
   CallMeta,
   CallTracking,
@@ -24,6 +26,23 @@ export type * from "./types";
 
 // ModelCall.request / .response trace shapes, re-exported for the demo seed so seeded traces match live ones.
 export { buildRequestTrace, buildResponseTrace } from "./persist";
+export { isProviderSetupFailure } from "./provider-errors";
+
+/**
+ * The demo workspace is Simulated by definition, whatever keys the server has. Its seeded workers run on a schedule
+ * and anyone can sign into it, so without this the first key someone puts in .env would start paying for demo runs
+ * they never asked for (CLAUDE.md rule 6: never spend the user's money by surprise).
+ */
+async function isDemoOrg(organizationId: string | null | undefined): Promise<boolean> {
+  if (!organizationId) return false;
+  const org = await db.organization.findUnique({ where: { id: organizationId }, select: { isDemo: true } });
+  return org?.isDemo === true;
+}
+
+/** Whether this workspace's model calls and tools are simulated: no live provider, or it is the demo workspace. */
+export async function isOrgSimulated(organizationId: string | null | undefined): Promise<boolean> {
+  return isSimulated() || (await isDemoOrg(organizationId));
+}
 
 const PROVIDERS: Readonly<Record<ProviderId, ModelProvider>> = {
   anthropic: createAiSdkProvider("anthropic"),
@@ -52,28 +71,28 @@ function failureDetails(e: unknown): { usage: ModelUsage; text?: string } {
 
 /**
  * Provider SDK errors carry request ids, URLs, sometimes an echoed prompt fragment and even the API key
- * ("Incorrect API key provided: sk-…"). That text is for operators, so it goes to `details` and to the
- * ModelCall.error column (scrubbed); the AppError MESSAGE — which reaches tenants — stays generic (F-009).
+ * ("Incorrect API key provided: sk-…"). That text is for operators, so it goes to `details.providerMessage` and to
+ * the ModelCall.error column (scrubbed); the AppError MESSAGE — which reaches tenants — is one sentence we wrote,
+ * naming the fix ("Anthropic rejected the API key — check ANTHROPIC_API_KEY …", F-009). The live adapter already
+ * throws those; this is the backstop for anything that escapes it.
  */
-function toAppError(e: unknown, route: TierRoute): AppError {
+function toAppError(e: unknown, route: TierRoute, tier: ModelTier): AppError {
   if (isAppError(e)) return e;
   if (route.provider === "mock") {
     // Simulated mode runs our own deterministic producers — a crash there is a bug, not a provider outage.
     return new AppError("INTERNAL", `Simulated model call failed: ${errorMessage(e)}`);
   }
-  const statusCode = (e as { statusCode?: unknown } | null)?.statusCode;
-  const status = typeof statusCode === "number" ? `HTTP ${statusCode}` : "no response";
-  return new AppError("MODEL_ERROR", `${providerLabel(route.provider)} could not complete the request (${status})`, {
-    provider: route.provider,
-    model: route.model,
-    ...(typeof statusCode === "number" ? { statusCode } : {}),
-    providerMessage: redactAndClip(errorMessage(e), MAX_PROVIDER_DETAIL_CHARS),
-  });
+  return toProviderAppError(e, { provider: route.provider, model: route.model, tier });
 }
 
-/** What lands in ModelCall.error: the generic line plus the scrubbed provider detail, for operators. */
+/** What lands in ModelCall.error: the human line plus the scrubbed provider detail, for operators. */
 function errorForTrace(failure: AppError, raw: unknown): string {
-  const detail = redactAndClip(errorMessage(raw), MAX_PROVIDER_DETAIL_CHARS);
+  const { providerMessage, statusCode } = (failure.details ?? {}) as { providerMessage?: unknown; statusCode?: unknown };
+  const status = typeof statusCode === "number" ? `HTTP ${statusCode}: ` : "";
+  const detail =
+    typeof providerMessage === "string" && providerMessage
+      ? `${status}${providerMessage}`
+      : redactAndClip(errorMessage(raw), MAX_PROVIDER_DETAIL_CHARS);
   return detail && detail !== failure.message ? `${failure.message} — ${detail}` : failure.message;
 }
 
@@ -100,7 +119,10 @@ async function execute<R extends { usage: ModelUsage }>(args: {
   response: (result: R) => ResponseTrace;
 }): Promise<{ result: R; meta: CallMeta }> {
   const { tier, tracking } = args;
-  const route = routeTier(tier);
+  let route = routeTier(tier);
+  if (route.provider !== "mock" && (await isDemoOrg(tracking.organizationId))) {
+    route = { provider: "mock", model: MOCK_TIER_MODELS[tier] };
+  }
   const simulated = route.provider === "mock";
   const price = priceFor(route.provider, route.model, tier);
   await assertMaySpend(tracking, simulated);
@@ -112,7 +134,7 @@ async function execute<R extends { usage: ModelUsage }>(args: {
     result = await args.call(PROVIDERS[route.provider], route.model);
   } catch (e) {
     const { usage, text } = failureDetails(e);
-    const failure = toAppError(e, route);
+    const failure = toAppError(e, route, tier);
     await recordModelCall({
       ...base,
       usage,

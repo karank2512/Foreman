@@ -1,5 +1,6 @@
 {
   "name": "foreman",
+  "license": "Apache-2.0",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -24,6 +25,8 @@
     "db:reset": "prisma migrate reset --force",
     "setup": "prisma migrate deploy",
     "setup:dev": "prisma migrate deploy && tsx prisma/seed.ts",
+    "setup:local": "node scripts/setup-local.mjs",
+    "smoke:live": "tsx scripts/smoke-live.ts",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "dev:web": "next dev"
   },

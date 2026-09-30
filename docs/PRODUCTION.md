@@ -1,10 +1,12 @@
 # Production & security phase — contracts and ownership
 
+> **Historical:** this file is the brief from the production-hardening phase of the original build. The role matrix and the `@/server/security` / `@/server/account` APIs below are still accurate. The "owner" and "frozen for this phase" wording is not a rule for contributors; see [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
 This phase makes the MVP publicly deployable and hardened, and redesigns the UI (see `docs/DESIGN.md`).
 It supersedes the "FROZEN" list in `docs/CONTRACTS.md` **only** for the files explicitly assigned below.
-Audit findings that motivate each item live in the lead's audit reports (IDs like F-002, INF-06, OPS-01).
+Audit findings that motivate each item are referenced by ID (F-002, INF-06, OPS-01) in code comments.
 
-## Already done by the lead (frozen for this phase)
+## Already in place before this phase
 - `package.json`: npm `overrides` (undici/postcss/deepmerge-ts) → `npm audit` = 0 vulnerabilities; `shadcn` moved to devDeps; `esbuild` added; scripts `worker`, `build:worker`, `start:worker`, `db:seed:demo`, `audit:prod`. Agents may edit `scripts` only if their brief says so; never run `npm install`.
 - `prisma/schema.prisma` + migration `20260922090000_production_security` (applied to dev + test DBs): `Organization.{isDemo, monthlyBudgetUsd, maxConcurrentRuns, maxQueuedRuns, maxActiveWorkers, suspendedAt}`, `User.{sessionVersion, passwordChangedAt, lastSignInAt, disabledAt, emailVerifiedAt}`, models `RateLimitBucket`, `SecurityEvent` (+ enum `SecurityEventType`), `Invitation`, `OrgSpendMonth`, `ExecutorHeartbeat`, and hot-path indexes. The existing demo org (`acme-robotics`) was marked `isDemo = true`.
 - `src/server/env.ts` — `validateEnv()` / `assertValidEnv()` (zod; production rules). Call `assertValidEnv()` at web boot (instrumentation) and worker boot.

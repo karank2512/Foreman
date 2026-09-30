@@ -30,6 +30,29 @@ const PUBLIC_TEXT: Partial<Record<AppErrorCode, string>> = {
   TOOL_ERROR: "A tool this worker relies on did not respond. Please try again shortly.",
 };
 
+/**
+ * Provider failures whose MODEL_ERROR message names the fix ("Anthropic rejected the API key — check
+ * ANTHROPIC_API_KEY …"). Those messages are written by providerFailureMessage in src/server/models/provider-errors.ts
+ * and never carry provider text (that stays in `details.providerMessage`), so they are shown as they are: on a
+ * self-hosted install the person reading them is the one who can fix the key. "Try again shortly" would send them
+ * off to wait for something that will never recover on its own. Read structurally, because models depends on
+ * security and not the other way round.
+ */
+const ACTIONABLE_MODEL_FAILURES: ReadonlySet<string> = new Set([
+  "auth",
+  "permission",
+  "quota",
+  "model_not_found",
+  "rate_limit",
+  "refused",
+]);
+
+function actionableModelMessage(e: unknown): string | undefined {
+  if (!isAppError(e) || e.code !== "MODEL_ERROR") return undefined;
+  const kind = (e.details as { kind?: unknown } | undefined)?.kind;
+  return typeof kind === "string" && ACTIONABLE_MODEL_FAILURES.has(kind) ? e.message : undefined;
+}
+
 const MAX_LOGGED_MESSAGE_CHARS = 500;
 
 /** Short, non-guessable correlation id shown to the user and logged with the real error. */
@@ -39,12 +62,13 @@ export function errorRef(): string {
 
 /**
  * Turn any thrown value into a message that is safe to send to a client. Internals (message, code, provider
- * text, stack) are logged with the returned `ref` and never returned.
+ * text, stack) are logged with the returned `ref` and never returned; the one exception is a provider failure
+ * whose message is our own instruction for fixing the setup (see ACTIONABLE_MODEL_FAILURES).
  */
 export function publicErrorMessage(e: unknown): { message: string; ref: string } {
   const ref = errorRef();
   const code: AppErrorCode | "UNKNOWN" = isAppError(e) ? e.code : "UNKNOWN";
-  const base = (isAppError(e) ? PUBLIC_TEXT[e.code] : undefined) ?? GENERIC_PUBLIC_ERROR;
+  const base = actionableModelMessage(e) ?? (isAppError(e) ? PUBLIC_TEXT[e.code] : undefined) ?? GENERIC_PUBLIC_ERROR;
 
   securityLog("error", "internal_error", {
     ref,

@@ -104,9 +104,23 @@ export function weightsOfBlueprint(blueprint: unknown): EvaluationWeights {
 const EMPTY_PARTS: ScoreParts = { deterministic: [], judge: [], user: [] };
 
 /**
+ * Key the runtime sets to `true` on a run's ERROR step output when the model provider refused the setup (a rejected
+ * key, no credits, no access, an unknown model id). Such a run still shows as failed, but it says nothing about
+ * the worker's quality, so it is left out of the score and of the recent-failure health check.
+ */
+export const PROVIDER_SETUP_FAILURE_MARKER = "providerSetup";
+
+/** Prisma filter for runs that count towards a worker's score and health. */
+const COUNTS_TOWARDS_QUALITY = {
+  status: { in: ["SUCCEEDED", "FAILED"] as RunStatus[] },
+  steps: { none: { kind: "ERROR" as const, output: { path: [PROVIDER_SETUP_FAILURE_MARKER], equals: true } } },
+};
+
+/**
  * Current score of a worker over its last N finished runs (default: current version, last 10). Every FAILED run
  * contributes a 0 to the deterministic component so a worker that keeps crashing cannot hide behind a few good
- * deliverables. CANCELLED and unfinished runs are ignored.
+ * deliverables. CANCELLED and unfinished runs are ignored, and so are runs the provider refused to serve
+ * (PROVIDER_SETUP_FAILURE_MARKER).
  */
 export async function computeWorkerScore(
   workerId: string,
@@ -129,7 +143,7 @@ export async function computeWorkerScore(
   const weights = weightsOfBlueprint(version.blueprint);
 
   const runs = await db.run.findMany({
-    where: { organizationId: worker.organizationId, workerId: worker.id, workerVersionId: versionId, status: { in: ["SUCCEEDED", "FAILED"] } },
+    where: { organizationId: worker.organizationId, workerId: worker.id, workerVersionId: versionId, ...COUNTS_TOWARDS_QUALITY },
     orderBy: [{ finishedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     take: Math.max(1, Math.floor(opts.lastNRuns ?? DEFAULT_SCORE_RUN_WINDOW)),
     select: { id: true, status: true },
@@ -179,7 +193,7 @@ export async function refreshWorkerHealth(workerId: string): Promise<void> {
           organizationId: worker.organizationId,
           workerId: worker.id,
           workerVersionId: worker.currentVersionId,
-          status: { in: ["SUCCEEDED", "FAILED"] },
+          ...COUNTS_TOWARDS_QUALITY,
         },
         orderBy: [{ finishedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
         take: Math.max(HEALTH_THRESHOLDS.recentRunWindow, HEALTH_THRESHOLDS.minRunsForHealth),

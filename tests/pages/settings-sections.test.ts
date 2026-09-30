@@ -112,6 +112,7 @@ describe("settings › copy speaks to the workspace owner, not the operator (des
   const ownerProviders: SettingsProviders = {
     mode: "simulated",
     forceSimulated: true,
+    demoWorkspace: false,
     providers: [
       { id: "anthropic", label: "Anthropic", available: false, envVar: "ANTHROPIC_API_KEY" },
       { id: "openai", label: "OpenAI", available: false, envVar: "OPENAI_API_KEY" },
@@ -145,6 +146,29 @@ describe("settings › copy speaks to the workspace owner, not the operator (des
     expect(splitAtOperatorNotes(html).notes).toBeNull();
     for (const token of OPS_TOKENS) expect(html).not.toContain(token);
     expect(html).toContain("Add a provider key to go live");
+  });
+
+  it("providers: the operator notes say where the key goes and how to check it, on both paths", () => {
+    const html = render(h(providers.ProvidersSection, { providers: ownerProviders, operator: true }));
+    const { notes } = splitAtOperatorNotes(html);
+    for (const token of [".env", "docker compose up", "npm run dev", "npm run smoke:live", "dist/smoke-live.cjs"]) {
+      expect(notes).toContain(token);
+    }
+    expect(html).not.toContain("ask whoever runs the platform");
+  });
+
+  it("providers: the demo workspace says it stays simulated even when the server has a key", () => {
+    const liveProviders: SettingsProviders = {
+      ...ownerProviders,
+      mode: "live",
+      forceSimulated: false,
+      providers: ownerProviders.providers.map((p) => (p.id === "anthropic" ? { ...p, available: true } : p)),
+    };
+    const demo = render(h(providers.ProvidersSection, { providers: { ...liveProviders, demoWorkspace: true }, operator: false }));
+    expect(demo).toContain("The demo workspace always uses the built-in simulator");
+    expect(demo).not.toContain("Workers think with real models");
+    const own = render(h(providers.ProvidersSection, { providers: liveProviders, operator: false }));
+    expect(own).toContain("Workers think with real models");
   });
 
   const executor: SettingsExecutor = { enabled: true, pollMs: 1000, concurrency: 2, staleLockMs: 600_000, schedulerTickMs: 15_000 };

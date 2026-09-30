@@ -114,3 +114,63 @@ describe("middleware: signed in", () => {
     expect(a).not.toBe(b);
   });
 });
+
+describe("middleware: DNS rebinding guard on a plain-http localhost install", () => {
+  const withPublicUrl = async <T>(url: string | undefined, fn: () => Promise<T>): Promise<T> => {
+    const previous = process.env.AUTH_URL;
+    if (url === undefined) delete process.env.AUTH_URL;
+    else process.env.AUTH_URL = url;
+    try {
+      return await fn();
+    } finally {
+      if (previous === undefined) delete process.env.AUTH_URL;
+      else process.env.AUTH_URL = previous;
+    }
+  };
+  const withHost = (path: string, host: string) =>
+    middleware(new NextRequest(`http://${host}${path}`, { headers: { host, "x-forwarded-proto": "http" } }), event);
+
+  it("refuses a page or Server Action request whose Host is a rebound domain", async () => {
+    await withPublicUrl("http://localhost:3000", async () => {
+      for (const path of ["/sign-up", "/workforce", "/api/runs/run_1", "/"]) {
+        const response = await withHost(path, "attacker.example:3000");
+        expect(response.status, path).toBe(421);
+        expect(response.headers.get(CSP), path).toBe(LOCKED_DOWN_CSP);
+        expect(response.headers.get("Cache-Control"), path).toBe("no-store");
+      }
+    });
+  });
+
+  it("answers every loopback name on any port", async () => {
+    await withPublicUrl("http://localhost:3000", async () => {
+      for (const host of ["localhost:3000", "localhost:3001", "127.0.0.1:3000", "[::1]:3000", "LOCALHOST:3000", "app.localhost:3000"]) {
+        const response = await withHost("/sign-in", host);
+        expect(response.status, host).not.toBe(421);
+      }
+    });
+  });
+
+  it("leaves https deployments and unconfigured dev servers alone", async () => {
+    await withPublicUrl("https://app.example.com", async () => {
+      expect((await withHost("/sign-in", "other.example.com")).status).not.toBe(421);
+    });
+    await withPublicUrl(undefined, async () => {
+      expect((await withHost("/sign-in", "192.168.1.20:3000")).status).not.toBe(421);
+    });
+  });
+});
+
+describe("isAllowedHost", () => {
+  it("parses the Host header the way browsers send it", async () => {
+    const { isAllowedHost } = await import("@/server/security/local-host");
+    const local = "http://localhost:3000";
+    expect(isAllowedHost("localhost:3000", local)).toBe(true);
+    expect(isAllowedHost("127.0.0.1", local)).toBe(true);
+    expect(isAllowedHost("[::1]:3000", local)).toBe(true);
+    expect(isAllowedHost("localhost.attacker.example", local)).toBe(false);
+    expect(isAllowedHost("127.0.0.1.nip.io:3000", local)).toBe(false);
+    expect(isAllowedHost("192.168.1.20:3000", local)).toBe(false);
+    expect(isAllowedHost(null, local)).toBe(false);
+    expect(isAllowedHost("evil.example", "https://app.example.com")).toBe(true);
+  });
+});

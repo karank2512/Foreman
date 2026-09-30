@@ -57,6 +57,19 @@ describe("web_search (live via Tavily)", () => {
     });
   });
 
+  it("tells the owner what to do about Tavily's rate limit and plan-limit statuses", async () => {
+    const cases: Array<[number, RegExp]> = [
+      [429, /HTTP 429 — Tavily is rate-limiting this key/],
+      [432, /HTTP 432 — this Tavily key has used up its plan or spending limit/],
+      [433, /HTTP 433 — this Tavily key has used up its plan or spending limit/],
+      [502, /HTTP 502 — Tavily is having trouble/],
+    ];
+    for (const [status, message] of cases) {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status })));
+      await expect(webSearchTool.execute({ query: "Acme funding" }, liveCtx("tvly-k"))).rejects.toMatchObject({ code: "TOOL_ERROR", message: expect.stringMatching(message) });
+    }
+  });
+
   it("surfaces network errors, invalid JSON and malformed payloads as errors", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("fetch failed"))));
     await expect(webSearchTool.execute({ query: "Acme funding" }, liveCtx("k"))).rejects.toMatchObject({ message: expect.stringContaining("fetch failed") });

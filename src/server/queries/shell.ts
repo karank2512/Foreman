@@ -1,8 +1,8 @@
 import { db } from "@/server/db";
-import { llm } from "@/server/models";
+import { isOrgSimulated } from "@/server/models";
 
 export interface ShellData {
-  /** True when no live model provider is configured — the whole product runs on the deterministic simulator. */
+  /** True when this workspace runs on the deterministic simulator: no live provider is configured, or it is the demo. */
   simulated: boolean;
   /** Approvals a human can act on right now. */
   pendingApprovals: number;
@@ -16,8 +16,9 @@ export interface ShellData {
  * the /approvals pending list uses, so the badge and the list always agree.
  */
 export async function getShellData(organizationId: string): Promise<ShellData> {
-  const pendingApprovals = await db.approval.count({
-    where: { organizationId, status: "PENDING", run: { status: "WAITING_FOR_APPROVAL" } },
-  });
-  return { simulated: llm.isSimulated(), pendingApprovals };
+  const [pendingApprovals, simulated] = await Promise.all([
+    db.approval.count({ where: { organizationId, status: "PENDING", run: { status: "WAITING_FOR_APPROVAL" } } }),
+    isOrgSimulated(organizationId),
+  ]);
+  return { simulated, pendingApprovals };
 }

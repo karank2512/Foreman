@@ -329,7 +329,7 @@ APP SHELL: replace the left sidebar with a global frosted top nav and page-level
 - Section headers: title-2 with an optional 15px secondary description. The trailing action is a blue text link with a chevron ("View all ›"), not an outline button.
 
 5. Marketing nav (for "/" and the auth pages)
-- The same 48px frosted bar: wordmark on the left. Centered 13px links: How it works, Product, Security, Pricing. They are in-page anchors with `scroll-margin-top: 64px`.
+- The same 48px frosted bar: wordmark on the left. Centered 13px links: How it works, Product, Security, Open source. They are in-page anchors with `scroll-margin-top: 64px`.
 - Right: "Sign in" as a 13px text link and "Get started" as a small blue pill. A signed-in visitor sees an "Open Workforce" pill instead.
 - While the bar overlaps the dark showcase band, it switches to --material-nav-dark with white text (IntersectionObserver on the section, 200ms color transition).
 - Mobile: the same full-screen overlay pattern.
@@ -506,7 +506,7 @@ GLOBAL FOR THE APP
 - Public route. Built from server components, plus one small client `<Reveal>` island for scroll animation.
 - Section-by-section structure and copy are in the landingPage field.
 - Implementation notes:
-  - New files: `src/app/(marketing)/page.tsx` (replacing `src/app/page.tsx`'s redirect), `src/app/(marketing)/layout.tsx` (marketing nav plus footer), and `src/app/(marketing)/_components/*` (hero, steps, feature-row, showcase, trust, pricing-teaser, cta, footer, and mock cards).
+  - New files: `src/app/(marketing)/page.tsx` (replacing `src/app/page.tsx`'s redirect), `src/app/(marketing)/layout.tsx` (marketing nav plus footer), and `src/app/(marketing)/_components/*` (hero, steps, feature-row, showcase, trust, open-source, cta, footer, and mock cards).
   - Signed-in visitors see "Open Workforce" in the nav instead of a redirect.
   - Add `/`, `/sign-up`, `/privacy` and `/terms` to the public allowlist in access.ts.
   - Page metadata: an original title/description plus OpenGraph. The OG image is generated with next/og from the headline in brand type, black on white.
@@ -663,14 +663,14 @@ Public marketing page at "/". All copy below is original to this brand. Layout f
 
 0. NAV (frosted, 48px, sticky)
 - Wordmark "Foreman".
-- Links: How it works · Product · Security · Pricing.
+- Links: How it works · Product · Security · Open source.
 - Right: "Sign in" (text) and "Get started" (small primary pill).
 
 1. HERO (white; pt 120px, pb 0; centered)
 - Headline (display-xl): "Describe the job. Meet your new hire."
 - Subhead (body-lg, secondary, max 640px): "Tell us what needs doing in plain English. We scope the work, design an AI worker for it, and put them on a schedule. Every deliverable is reviewed, scored, and yours to keep. If it isn't working, you replace them in a click."
 - CTAs (xl pills, gap 16): "Get started" (primary) and "See how it works" (secondary gray pill, scrolls to #how).
-- Beneath, 13px tertiary: "No credit card required."
+- Beneath, 13px tertiary: "Free and open source. Runs on your own machine, with your own model key or none at all."
 - Showcase frame starts 64px below the CTAs. It's a rounded-[36px] #f5f5f7 frame, 1024px wide, that bleeds into the next section (negative bottom margin). Inside is a mock Workforce page:
   - A mini frosted nav.
   - A stat strip (Active workers 6 · Runs today 14 · Waiting for review 2 · Spend this month $38.20).
@@ -716,7 +716,7 @@ Public marketing page at "/". All copy below is original to this brand. Layout f
 - Headline (display): "Built to be trusted with real work."
 - Sub: "Your workers act on your behalf, so the guardrails are part of the product, not an add-on."
 - Items (title-3 + 15px body):
-  - "Permissions enforced on our servers": "Tool access is checked on every action, not just shown in the interface."
+  - "Permissions enforced on the server": "Tool access is checked on every action, not just shown in the interface."
   - "Approval before sensitive steps": "Actions you mark as sensitive wait for a person."
   - "Your workspace, walled off": "Every record is scoped to your organization, and every request is checked."
   - "A complete audit trail": "Every run, tool call, and decision is logged and reviewable."
@@ -724,14 +724,12 @@ Public marketing page at "/". All copy below is original to this brand. Layout f
   - "Costs you can see": "Every run shows its cost to the cent."
 - Note for the implementer: publish only claims that are true at launch. Verify each item against docs/SECURITY.md and the security workstream. Drop "encrypted" unless credential encryption at rest ships. Link "Read our security overview ›" to /security once it exists.
 
-9. PRICING TEASER (#pricing; gray)
-- Headline: "Pay for the work, not the seats."
-- Sub: "Start free, then pay for what your workers actually do. Every run is itemized."
-- Three white cards (radius 22), each with the name (title-2), one-line description, price placeholder, 4 plain bullet lines and a pill:
-  - "Starter": "For trying out your first worker."
-  - "Team": "For teams putting several workers on real jobs." (visually emphasized with a 2px primary border; no "Most popular" ribbon)
-  - "Enterprise": "For custom controls, SSO, and volume."
-- Implementer note: the owner must supply real prices. Until then, render "Pricing coming soon" and route the CTAs to /sign-up and a contact mailto. Never invent numbers in production.
+9. OPEN SOURCE (#open-source; gray)
+- Headline: "Free and open source."
+- Sub: "Foreman is open source under the Apache 2.0 license. Run it yourself, read every line, and change what you like."
+- Three white cards (radius 22), each a title-2 and one short paragraph: "Runs on your machine", "Bring your own model key" (billed by the provider to the user's account; Foreman adds nothing on top), "Free to try, no key needed" (Simulated mode).
+- Pills: "View on GitHub" (primary, the public repository) and "Create a workspace" (secondary, /sign-up).
+- Foreman is self-hosted with no hosted version, so there are no plans or prices anywhere on the page.
 
 10. FINAL CTA (white; centered; pt/pb 160px)
 - Headline (display): "Your next hire is a paragraph away."
@@ -739,11 +737,10 @@ Public marketing page at "/". All copy below is original to this brand. Layout f
 
 11. FOOTER (gray #f5f5f7; 12px/16px, #6e6e73; hairline top)
 - Four columns (collapsing into accordions on mobile):
-  - Product: How it works, Security, Pricing.
-  - Company: About, Contact.
-  - Resources: Help center, Status.
-  - Legal: Privacy, Terms.
-- Bottom row: "© 2026 Foreman. All rights reserved." at left and "Made for teams who'd rather review than repeat." at right.
+  - Product: How it works, Security, Open source.
+  - Project: GitHub, Apache License 2.0.
+  - Account: Sign in, Create account.
+- Bottom row: "© 2026 Foreman contributors · Apache License 2.0 · GitHub" at left and "Made for teams who'd rather review than repeat." at right.
 - Don't link pages that don't exist. Omit them until built.
 
 Motion on the landing page: each section's headline, body and mock get the Reveal treatment (fade + 16px rise, 400ms ease-out, 60ms stagger, once per element, threshold 0.2).

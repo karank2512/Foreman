@@ -6,7 +6,7 @@ import { config } from "@/server/config";
 import { db, toJson, type DbTx } from "@/server/db";
 import { refreshWorkerScore } from "@/server/evaluation";
 import { conflict, notFound } from "@/server/errors";
-import { llm } from "@/server/models";
+import { isOrgSimulated } from "@/server/models";
 import { assertOrgActive, assertWithinBudget } from "@/server/security";
 import { parseCheckpoint } from "./checkpoint";
 import { WORKER_RETIRED_REASON } from "./failure";
@@ -64,6 +64,8 @@ export async function enqueueRun(args: EnqueueRunArgs): Promise<{ runId: string 
   // Quotas first: a suspended or over-budget workspace queues nothing, whoever asked and whatever the trigger.
   await assertOrgActive(organizationId);
   await assertWithinBudget(organizationId);
+  // The run's tools follow this flag. Model calls check the workspace themselves; the demo is always simulated.
+  const simulated = await isOrgSimulated(organizationId);
 
   const created = await db.$transaction(async (tx) => {
     // Serialize every enqueue of this org so two clicks (or a click racing the scheduler) cannot both pass the
@@ -104,7 +106,7 @@ export async function enqueueRun(args: EnqueueRunArgs): Promise<{ runId: string 
         status: "QUEUED",
         trigger: args.trigger,
         input: toJson(input),
-        simulated: llm.isSimulated(),
+        simulated,
         requestedById: args.requestedById ?? null,
         availableAt: args.availableAt ?? now,
       },

@@ -130,6 +130,12 @@ export async function generateObjectWithReask<T>(
   try {
     second = await attempt(buildReaskPrompt(req.prompt, first));
   } catch (e) {
+    // Already a human-facing failure (bad key, rate limit, refusal …): keep its message, add the first attempt's tokens.
+    if (e instanceof AppError) {
+      const details = e.details !== null && typeof e.details === "object" ? (e.details as { usage?: ModelUsage }) : {};
+      const usage = details.usage ? addUsage(first.usage, details.usage) : first.usage;
+      throw new AppError(e.code, e.message, { ...details, usage, issues: first.issues });
+    }
     const message = e instanceof Error ? e.message : String(e);
     throw new AppError("MODEL_ERROR", `The model call failed while correcting its ${req.schemaName} output: ${message}`, {
       usage: first.usage,

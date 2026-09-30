@@ -1,6 +1,6 @@
 import { recordActivity } from "@/server/activity";
 import { db, toJson } from "@/server/db";
-import { evaluateRun, refreshWorkerScore } from "@/server/evaluation";
+import { evaluateRun, PROVIDER_SETUP_FAILURE_MARKER, refreshWorkerScore } from "@/server/evaluation";
 import { errorMessage } from "@/server/errors";
 import { tools } from "@/server/tools";
 import { parseCheckpoint } from "./checkpoint";
@@ -139,7 +139,14 @@ export async function finishFailure(slice: RunSlice, failure: RunFailure): Promi
     status: "FAILED",
     error: message,
     componentId: slice.blueprint.components[slice.componentStart.index]?.id,
-    output: { code: failure.code, retryable: failure.retryable, attempt: run.attempt, maxAttempts: run.maxAttempts },
+    output: {
+      code: failure.code,
+      retryable: failure.retryable,
+      attempt: run.attempt,
+      maxAttempts: run.maxAttempts,
+      // Read by evaluation/score.ts: a provider-setup failure is not held against the worker.
+      ...(failure.providerSetup ? { [PROVIDER_SETUP_FAILURE_MARKER]: true } : {}),
+    },
   });
 
   const willRetry = failure.retryable && run.attempt < run.maxAttempts;

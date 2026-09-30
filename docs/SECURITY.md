@@ -75,6 +75,7 @@ This document describes what is *implemented*, with file pointers, plus the runb
 
 - Static headers on every response (HSTS in production, `nosniff`, `X-Frame-Options: DENY`, referrer, permissions, COOP, CORP, no `X-Powered-By`) — `next.config.ts`.
 - A per-request nonce-based **Content-Security-Policy** with `strict-dynamic`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` and `upgrade-insecure-requests` in production — `src/server/security/csp.ts` + `src/middleware.ts`. Redirect and 401 responses get an inert deny-all policy. `style-src` keeps `'unsafe-inline'` because React SSR emits style attributes and the toast library injects a stylesheet; there is no raw-HTML rendering path, so that residual is small.
+- A **DNS-rebinding guard** for the self-hosted stack on plain `http://localhost`: when `AUTH_URL` is `http://`, the middleware answers only requests whose `Host` is a loopback name or the `AUTH_URL` host and returns `421` for anything else, so a website the owner visits cannot rebind its domain to 127.0.0.1 and sign up or run workers on the owner's key — `src/server/security/local-host.ts` + `src/middleware.ts`. `https://` deployments skip it. `npm run dev` also binds to `localhost` rather than every interface.
 - Server actions: Next.js origin checking (do not add a wildcard `SERVER_ACTIONS_ALLOWED_ORIGINS`) plus a 256 KB body limit. Every export of a `"use server"` file is a public endpoint, so `tests/security/server-actions.test.ts` asserts that each one is an async function that starts from `requireSession()` (with a named allow-list for sign-in, sign-up, invite acceptance and sign-out), and that route handlers export `GET` only (F-017).
 
 ### 2.7 Secrets
@@ -143,7 +144,7 @@ Deploy with the new secret; Auth.js accepts an array, so keep the previous value
 
 ## 5. Reporting a vulnerability
 
-Email **security@** the operating organization (or open a private security advisory on the repository) with: what you found, how to reproduce it, what you could access, and whether any tenant data was involved. Please do not open a public issue, do not test against workspaces that are not yours, and do not run denial-of-service tests against shared infrastructure. We aim to acknowledge within two business days and to ship a fix or a mitigation before any public disclosure; we are happy to credit you.
+For Foreman itself, open a private security advisory at https://github.com/karank2512/Foreman/security/advisories/new. If you run your own deployment, route reports to whoever operates it. Include: what you found, how to reproduce it, what you could access, and whether any tenant data was involved. Please do not open a public issue, do not test against workspaces that are not yours, and do not run denial-of-service tests against shared infrastructure. We aim to acknowledge within two business days and to ship a fix or a mitigation before any public disclosure; we are happy to credit you.
 
 ---
 

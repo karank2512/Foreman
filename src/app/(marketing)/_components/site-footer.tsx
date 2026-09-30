@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LICENSE_URL, REPO_URL } from "@/lib/project";
 import { SIGN_IN_PATH, SIGN_UP_PATH } from "@/server/auth";
 
 /**
@@ -17,7 +18,14 @@ const COLUMNS: { heading: string; items: FooterItem[] }[] = [
     items: [
       { label: "How it works", href: "#how" },
       { label: "Security", href: "#security" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Open source", href: "#open-source" },
+    ],
+  },
+  {
+    heading: "Project",
+    items: [
+      { label: "GitHub", href: REPO_URL },
+      { label: "Apache License 2.0", href: LICENSE_URL },
     ],
   },
   {
@@ -31,6 +39,8 @@ const COLUMNS: { heading: string; items: FooterItem[] }[] = [
 
 // 12px text on a 44px row (and never narrower than 44px) for thumbs; from 640px up the rows tighten back to
 // a 26px pitch.
+const isExternal = (href: string) => /^https?:\/\//.test(href);
+
 const ITEM_CLASS = "inline-flex min-h-11 min-w-11 items-center hover:text-foreground hover:underline sm:min-h-6";
 
 export function SiteFooter({ simulated }: { simulated: boolean }) {
@@ -46,8 +56,12 @@ export function SiteFooter({ simulated }: { simulated: boolean }) {
               <ul className="mt-3 space-y-1 sm:space-y-0.5">
                 {column.items.map((item) => (
                   <li key={item.label} className="text-[12px] leading-4">
-                    {item.href.startsWith("#") ? (
-                      <a href={item.href} className={ITEM_CLASS}>
+                    {item.href.startsWith("#") || isExternal(item.href) ? (
+                      <a
+                        href={item.href}
+                        className={ITEM_CLASS}
+                        {...(isExternal(item.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      >
                         {item.label}
                       </a>
                     ) : (
@@ -63,13 +77,13 @@ export function SiteFooter({ simulated }: { simulated: boolean }) {
         </div>
 
         <div className="mt-12 flex flex-col gap-2 border-t border-border pt-6 text-[12px] leading-4 sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {year} Foreman. All rights reserved.</p>
+          <p>&copy; {year} Foreman contributors &middot; Free and open source under the Apache License 2.0</p>
           <p>Made for teams who&rsquo;d rather review than repeat.</p>
         </div>
 
         {simulated ? (
           <p className="mt-3 text-[12px] leading-4">
-            This deployment runs in simulated mode: model calls and tools are stand-ins, priced for reference and
+            This copy of Foreman runs in simulated mode: model calls and tools are stand-ins, priced for reference and
             never billed.
           </p>
         ) : null}

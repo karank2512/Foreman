@@ -73,8 +73,10 @@ function productionProblems(env: AppEnv): string[] {
   if (env.AUTH_SECRET.length < 32) problems.push("AUTH_SECRET must be at least 32 characters in production (openssl rand -base64 32)");
   const publicUrl = env.AUTH_URL ?? env.NEXTAUTH_URL;
   if (!publicUrl) problems.push("AUTH_URL is required in production (the public https:// origin, e.g. https://app.example.com)");
-  else if (!publicUrl.startsWith("https://") && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(publicUrl)) {
-    problems.push("AUTH_URL must be an https:// URL in production");
+  // Plain http is only for the self-hosted stack on your own machine (docker-compose.yml). The pattern is anchored
+  // so a public host that merely starts with "localhost" (http://localhost.example.com) does not qualify.
+  else if (!publicUrl.startsWith("https://") && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/.test(publicUrl)) {
+    problems.push("AUTH_URL must be an https:// URL in production (plain http is only allowed for localhost)");
   }
   if (env.SIGNUP_MODE === "invite" && !env.SIGNUP_INVITE_CODE) {
     problems.push("SIGNUP_INVITE_CODE is required when SIGNUP_MODE=invite");

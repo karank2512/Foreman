@@ -31,7 +31,7 @@ export default async function PermissionsTab({ session, workerId, workerName }: 
     <>
       <Section
         title="What they can touch"
-        description={`Every tool ${workerName} can use, and whether it asks you first. Checked on our servers before each call, not just here.`}
+        description={`Every tool ${workerName} can use, and whether it asks you first. Checked on the server before each call, not just here.`}
       >
         {data.grants.length === 0 ? (
           <Card>

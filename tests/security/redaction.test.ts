@@ -96,6 +96,25 @@ describe("publicErrorMessage", () => {
     log.mockRestore();
   });
 
+  it("shows a provider-setup message of ours verbatim (with its reference), but keeps transient ones generic", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const fix = "OpenAI says this API key is out of credits or over its spending limit — add credits or raise the limit in your OpenAI account, then try again.";
+    for (const kind of ["auth", "permission", "quota", "model_not_found", "rate_limit", "refused"]) {
+      const { message, ref } = publicErrorMessage(
+        new AppError("MODEL_ERROR", fix, { provider: "openai", kind, providerMessage: "You exceeded your quota: sk-proj-Zm9vYmFy" }),
+      );
+      expect(message, kind).toBe(`${fix} (ref ${ref})`);
+      expect(message, kind).not.toContain("sk-proj");
+    }
+    for (const kind of ["overloaded", "timeout", "network", "bad_request", "bad_response", "unknown", undefined]) {
+      const { message } = publicErrorMessage(new AppError("MODEL_ERROR", "OpenAI is overloaded (HTTP 503)", { kind }));
+      expect(message, String(kind)).toMatch(/^The AI model is unavailable right now/);
+    }
+    // Only MODEL_ERROR carries provider-setup messages: the same details on another code change nothing.
+    expect(publicErrorMessage(new AppError("INTERNAL", fix, { kind: "auth" })).message).toMatch(/^Something went wrong/);
+    log.mockRestore();
+  });
+
   it("gives each failure its own reference", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(publicErrorMessage(new Error("a")).ref).not.toBe(publicErrorMessage(new Error("a")).ref);

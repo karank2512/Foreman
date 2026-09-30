@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Section } from "@/components/section";
 import { LocalNav } from "@/components/shell/local-nav";
+import { SimulatedWorkNote } from "@/components/simulated-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { WorkerAvatar } from "@/components/worker-avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,6 +127,7 @@ export default async function RunPage({ params }: Params) {
           ) : null}
 
           <section id="timeline" className={ANCHOR}>
+          {run.simulated ? <SimulatedWorkNote className="mb-6" /> : null}
           <Section title="What happened" description={`${worker.name}’s work, step by step.`}>
             <Card>
               <CardContent className="space-y-6">

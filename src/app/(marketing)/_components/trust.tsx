@@ -9,7 +9,7 @@ import { MarketingSection, SectionIntro, reveal } from "./section";
  */
 const ITEMS: { title: string; body: string }[] = [
   {
-    title: "Permissions enforced on our servers",
+    title: "Permissions enforced on the server",
     body: "What a worker may touch is checked on every action, not just hidden in the interface. Roles decide what a person can do, too.",
   },
   {

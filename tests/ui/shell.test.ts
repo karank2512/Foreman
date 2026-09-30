@@ -3,9 +3,10 @@ import { db, toJson } from "@/server/db";
 import { createTestOrg } from "../helpers/factory";
 import { createHiredWorker } from "../helpers/fixtures";
 
-// The shell only needs `llm.isSimulated()`. Mocking keeps this suite independent of the models module's internals.
+// The shell only needs `isOrgSimulated()` (the demo workspace case has its own test in tests/runtime). Mocking keeps
+// this suite independent of the models module's internals.
 const isSimulated = vi.fn(() => true);
-vi.mock("@/server/models", () => ({ llm: { isSimulated: () => isSimulated() } }));
+vi.mock("@/server/models", () => ({ isOrgSimulated: async () => isSimulated() }));
 
 const { getShellData } = await import("@/server/queries/shell");
 

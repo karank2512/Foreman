@@ -75,7 +75,7 @@ describe("phone-width layout (design-public-auth-004)", () => {
   });
 
   it("lets the grid children that hold mocks shrink below their content", async () => {
-    for (const file of ["feature-row.tsx", "review-tiles.tsx", "how-it-works.tsx", "pricing-teaser.tsx", "trust.tsx"]) {
+    for (const file of ["feature-row.tsx", "review-tiles.tsx", "how-it-works.tsx", "open-source.tsx", "trust.tsx"]) {
       expect(await read(`${COMPONENTS}${file}`), file).toContain("min-w-0");
     }
   });
@@ -129,14 +129,28 @@ describe("footer and in-page links (design-public-auth-005/006/009)", () => {
     expect((footer.match(/className=\{ITEM_CLASS\}/g) ?? []).length).toBe(2);
   });
 
-  it("promises nothing it can't deliver: no 'Talk to us' without a way to talk, no anchor to the wrong section", async () => {
-    const pricing = await read(`${COMPONENTS}pricing-teaser.tsx`);
-    const prices = [...pricing.matchAll(/price: "([^"]+)"/g)].map((match) => match[1]);
-    expect(prices).toHaveLength(3);
-    expect(prices).not.toContain("Talk to us");
-    // Every card's button does the one thing that works today.
-    expect((pricing.match(/cta: \{ label: "Get started", href: SIGN_UP_PATH \}/g) ?? []).length).toBe(3);
+  it("promises nothing it can't deliver: no anchor to the wrong section", async () => {
     expect(await read(`${MARKETING}page.tsx`)).not.toContain("How workers are designed");
+  });
+
+  it("presents Foreman as free, open source and self-hosted: no plans, prices or card talk, and a link to the source", async () => {
+    const files = (await readdir(new URL(COMPONENTS, root))).filter((file) => file.endsWith(".tsx"));
+    expect(files).not.toContain("pricing-teaser.tsx");
+    for (const file of files) {
+      const source = await read(`${COMPONENTS}${file}`);
+      for (const phrase of ["Pricing", "credit card", "All rights reserved", "Volume pricing", "our servers"]) {
+        expect(source, `${file}: ${phrase}`).not.toContain(phrase);
+      }
+    }
+    const openSource = await read(`${COMPONENTS}open-source.tsx`);
+    expect(openSource).toContain('id="open-source"');
+    expect(openSource).toContain("Apache 2.0");
+    expect(openSource).toContain("href={REPO_URL}");
+    const footer = await read(`${COMPONENTS}site-footer.tsx`);
+    expect(footer).toContain("Foreman contributors");
+    expect(footer).toContain("Apache License 2.0");
+    expect(footer).toContain("{ label: \"GitHub\", href: REPO_URL }");
+    expect(await read("src/lib/project.ts")).toContain('"https://github.com/karank2512/Foreman"');
   });
 
   it("pads the feature-row tertiary link to a 44px row", async () => {

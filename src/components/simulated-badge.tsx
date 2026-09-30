@@ -2,7 +2,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 
 export const SIMULATED_EXPLANATION =
-  "No model API keys detected — workers run on a deterministic simulator. Add keys in .env to go live.";
+  "Made by the built-in simulator: no model API key is set, or this is the demo workspace. Add a key in .env to go live.";
 
 export interface SimulatedBadgeProps {
   /** Dot only, for the mobile nav where the word would crowd the bar. The label moves to the accessible name. */
@@ -35,5 +35,21 @@ export function SimulatedBadge({ dotOnly = false, className }: SimulatedBadgePro
       </TooltipTrigger>
       <TooltipContent side="bottom">{SIMULATED_EXPLANATION}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * One quiet line above simulated work. Simulated output is shaped like the real thing (and can score well), so on
+ * the pages where someone reads it, the chip alone is too easy to miss.
+ */
+export function SimulatedWorkNote({ className }: { className?: string }) {
+  return (
+    <p className={cn("flex items-start gap-2 text-footnote text-pretty text-muted-foreground", className)}>
+      <span aria-hidden="true" className="mt-[5px] size-1.5 shrink-0 rounded-full bg-warning" />
+      <span>
+        Sample content from the built-in simulator. It shows how the work is shaped, not real findings. Add a model
+        provider key in .env for real results.
+      </span>
+    </p>
   );
 }

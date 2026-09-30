@@ -34,14 +34,14 @@ describe("models: provider availability + tier routing", () => {
 
   it("falls through the provider order: anthropic → openai → google", async () => {
     await withModelEnv({ OPENAI_API_KEY: "sk-test", GOOGLE_GENERATIVE_AI_API_KEY: "g-test" }, () => {
-      expect(llm.route("fast")).toEqual({ provider: "openai", model: "gpt-5-mini" });
-      expect(llm.route("standard")).toEqual({ provider: "openai", model: "gpt-5" });
-      expect(llm.route("reasoning")).toEqual({ provider: "openai", model: "gpt-5" });
+      expect(llm.route("fast")).toEqual({ provider: "openai", model: "gpt-6-luna" });
+      expect(llm.route("standard")).toEqual({ provider: "openai", model: "gpt-6.1-sol" });
+      expect(llm.route("reasoning")).toEqual({ provider: "openai", model: "gpt-6.1-sol" });
     });
     await withModelEnv({ GOOGLE_GENERATIVE_AI_API_KEY: "g-test" }, () => {
-      expect(llm.route("fast")).toEqual({ provider: "google", model: "gemini-2.5-flash" });
-      expect(llm.route("standard")).toEqual({ provider: "google", model: "gemini-2.5-pro" });
-      expect(llm.route("reasoning")).toEqual({ provider: "google", model: "gemini-2.5-pro" });
+      expect(llm.route("fast")).toEqual({ provider: "google", model: "gemini-3.5-flash-lite" });
+      expect(llm.route("standard")).toEqual({ provider: "google", model: "gemini-3.8-flash" });
+      expect(llm.route("reasoning")).toEqual({ provider: "google", model: "gemini-3.8-flash" });
     });
   });
 
@@ -110,9 +110,9 @@ describe("models: provider availability + tier routing", () => {
       ]);
       expect(status.providers.every((p) => p.label.length > 0)).toBe(true);
       expect(status.tiers).toEqual({
-        fast: { provider: "openai", model: "gpt-5-mini" },
-        standard: { provider: "openai", model: "gpt-5" },
-        reasoning: { provider: "openai", model: "gpt-5" },
+        fast: { provider: "openai", model: "gpt-6-luna" },
+        standard: { provider: "openai", model: "gpt-6.1-sol" },
+        reasoning: { provider: "openai", model: "gpt-6.1-sol" },
       });
     });
   });

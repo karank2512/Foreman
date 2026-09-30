@@ -1,4 +1,5 @@
 import { errorMessage, isAppError, type AppErrorCode } from "@/server/errors";
+import { isProviderSetupFailure } from "@/server/models";
 import { redactSecrets } from "@/server/security";
 import { oneLine } from "./compact";
 
@@ -21,12 +22,18 @@ export class LockLost extends Error {
 export class RunFailure extends Error {
   readonly code: AppErrorCode;
   readonly retryable: boolean;
+  /**
+   * The model provider refused the setup (bad key, no credits, no access, unknown model id). Says nothing about the
+   * worker, so the run is recorded as failed but kept out of its score and health (see evaluation/score.ts).
+   */
+  readonly providerSetup: boolean;
 
-  constructor(code: AppErrorCode, message: string, retryable: boolean) {
+  constructor(code: AppErrorCode, message: string, retryable: boolean, opts: { providerSetup?: boolean } = {}) {
     super(message);
     this.name = "RunFailure";
     this.code = code;
     this.retryable = retryable;
+    this.providerSetup = opts.providerSetup ?? false;
   }
 }
 
@@ -67,9 +74,14 @@ const NON_RETRYABLE: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
   "CONFLICT",
 ]);
 
-/** MODEL_ERROR and anything unexpected is retried while attempts remain; rule violations are not. */
+/**
+ * MODEL_ERROR and anything unexpected is retried while attempts remain; rule violations are not, and neither is a
+ * provider refusing the setup — a rejected key or an empty balance fails the same way on every attempt, so the fix
+ * message should land at once instead of after a backoff.
+ */
 export function toRunFailure(e: unknown): RunFailure {
   if (e instanceof RunFailure) return e;
+  if (isProviderSetupFailure(e)) return new RunFailure("MODEL_ERROR", errorMessage(e), false, { providerSetup: true });
   if (isAppError(e)) return new RunFailure(e.code, e.message, !NON_RETRYABLE.has(e.code));
   return new RunFailure("INTERNAL", errorMessage(e), true);
 }

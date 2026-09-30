@@ -42,8 +42,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local tooling
-.claude/
+# local tooling (the project skills in .claude/skills/ are shared)
+.claude/*
+!.claude/skills/
 
 # worker bundle (npm run build:worker)
 /dist
+
+# generated launch-video output
+brag-output*/

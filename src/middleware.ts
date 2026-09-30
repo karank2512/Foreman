@@ -2,12 +2,16 @@ import NextAuth from "next-auth";
 import type { NextFetchEvent, NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/server/auth/auth.config";
+import { config as appConfig } from "@/server/config";
 import { CSP_NONCE_HEADER, DOWNLOAD_CSP, LOCKED_DOWN_CSP, buildCsp, createNonce } from "@/server/security/csp";
+import { isAllowedHost } from "@/server/security/local-host";
 
 /**
  * Runs on the Edge runtime, so it is built from the edge-safe config only (no Prisma / bcrypt).
  *
- * Two jobs:
+ * Three jobs:
+ *  0. On a plain-http localhost install, refuse any request whose Host is not a loopback name (DNS rebinding —
+ *     see security/local-host.ts). https deployments skip this.
  *  1. The Auth.js gate (`authorized` in auth.config.ts → decideAccess) —
  *       unauthenticated page request   → redirect to /sign-in?callbackUrl=…
  *       unauthenticated /api/* request → 401 JSON (except /api/auth/*)
@@ -32,12 +36,20 @@ const DOWNLOAD_PATH = /^\/deliverables\/[^/]+\/download\/?$/;
 
 const isApiPath = (pathname: string): boolean => pathname === "/api" || pathname.startsWith("/api/");
 
+/**
+ * A production app whose configured public origin is plain http — only the self-hosted stack on
+ * http://localhost, since env.ts rejects any other http AUTH_URL in production — must not ask the browser to
+ * upgrade its own requests to https. Keyed on the configured origin, never on the request, so no header can
+ * switch it off on a real https deployment.
+ */
+const servesPlainHttp = (): boolean => appConfig.publicUrl?.startsWith("http://") ?? false;
+
 /** Which policy a request gets. Only pages carry a nonce; the file and JSON routes render no markup of ours. */
 function policyFor(pathname: string): { csp: string; nonce: string | null } {
   if (DOWNLOAD_PATH.test(pathname)) return { csp: DOWNLOAD_CSP, nonce: null };
   if (isApiPath(pathname)) return { csp: LOCKED_DOWN_CSP, nonce: null };
   const nonce = createNonce();
-  return { csp: buildCsp({ nonce, dev: isDev }), nonce };
+  return { csp: buildCsp({ nonce, dev: isDev, upgradeInsecureRequests: !isDev && !servesPlainHttp() }), nonce };
 }
 
 /** Auth.js types `auth(handler)` for route handlers; in middleware Next.js passes a NextFetchEvent. */
@@ -67,6 +79,12 @@ const gate = NextAuth(authConfig).auth((request) => {
  * setting it here means a handler that forgets it is still safe.
  */
 export default async function middleware(request: NextRequest, event: NextFetchEvent): Promise<Response> {
+  if (!isAllowedHost(request.headers.get("host"), appConfig.publicUrl)) {
+    return new Response("This Foreman server only answers on localhost. Open it at the address in AUTH_URL.", {
+      status: 421,
+      headers: { [CSP_HEADER]: LOCKED_DOWN_CSP, [CACHE_HEADER]: "no-store", "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   const response = (await gate(request, event)) as Response;
   if (!response) return response;
   if (!response.headers.has(CSP_HEADER)) response.headers.set(CSP_HEADER, LOCKED_DOWN_CSP);

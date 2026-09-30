@@ -1,157 +1,174 @@
 # Foreman
 
-**The staffing agency for AI workers.** Describe a job in plain English; the platform scopes it, designs the right AI worker, puts it to work on a schedule, measures its performance, and lets you improve or replace it — exactly like managing a contractor.
+**Foreman is a staffing agency for AI workers.** You describe a job in plain English, Foreman designs a worker for it, and you hire it, read every step of its work, review what it delivers, and replace it when it isn't working out, the way you'd manage a contractor.
 
-Core loop: **Job → Worker → Runs → Deliverables → Evaluation → Replace.**
+It's for people who want recurring AI work (research digests, lead lists, monitoring, reports) done by something they can supervise, not a chat window they have to babysit. It's open source (Apache 2.0) and you run it yourself, with your own AI provider keys. With no keys it runs in a built-in **Simulated mode**, so you can try the whole thing for free.
 
-A production-ready Next.js application: multi-tenant workspaces with roles and invitations, a durable run engine in its own worker process, server-side permissions and approval gates, spend caps, rate limiting, a nonce-based CSP, a security audit log, health checks, Docker and CI — and a deterministic **Simulated mode** so the whole product works with zero API keys.
+[![Foreman demo video (22 s)](docs/media/foreman-poster.jpg)](docs/media/foreman-demo.mp4)
+
+*Click the image to watch the 22-second demo.*
 
 ---
 
-## Quick start (local)
+## Quick start (Docker)
 
-Prerequisites: Node ≥ 20, PostgreSQL 14+ running locally.
+You need [Docker](https://docs.docker.com/get-docker/) with Compose v2.24 or newer (any current Docker Desktop; check with `docker compose version`) and nothing else. No Node.js, no Postgres, no `openssl`.
 
 ```bash
-createdb ai_staffing_agency
-cp .env.example .env               # set DATABASE_URL, AUTH_SECRET, CREDENTIAL_ENCRYPTION_KEY (see the file)
-npm install                        # also runs prisma generate
-npm run setup:dev                  # migrations + the demo workspace
-npm run dev                        # web (http://localhost:3000) + worker
+git clone https://github.com/karank2512/Foreman.git && cd Foreman
+cp .env.example .env        # optional: set ONE of ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY (+ optional TAVILY_API_KEY for live web search). No key = Simulated mode.
+docker compose up           # first run builds the image; open http://localhost:3000
 ```
 
-`npm run dev` starts two processes, the same two that run in production: the Next.js web server and the run worker. Runs are always executed by the worker; the web server only enqueues them.
+The first run builds the image, which takes a few minutes. After that:
 
-**Demo workspace.** With `DEMO_MODE=true` in `.env`, the sign-in page offers *Explore the demo workspace*: the seeded "Acme Robotics" org with three workers, three weeks of run history, deliverables, evaluations, a performance review and one pending approval. Without `DEMO_MODE` the demo org cannot be signed into at all.
+- **Explore the demo workspace** on the sign-in page signs you into *Acme Robotics*, a seeded workspace with three workers, three weeks of run history, deliverables, evaluations, a performance review and one pending approval.
+- **Or create your own workspace** at `/sign-up`. You become its owner and can invite teammates from *Settings → Members*.
 
-**Your own workspace.** With `SIGNUP_MODE=open` (the local default), create an account at `/sign-up`; you become the workspace owner and can invite teammates from *Settings → Members*.
+What the stack does for you:
 
-### Going live with real models
+- `AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` are generated on first boot and kept in a Docker volume, so sessions and stored credentials survive restarts. Anything you set in `.env` wins.
+- The `.env` file is optional. `docker compose up` without one starts in Simulated mode.
+- It runs over plain `http://localhost:3000`, with sign-up open and the demo workspace seeded. Set `SIGNUP_MODE=closed` or `DEMO_MODE=false` in `.env` to turn either off.
+- Postgres is published on `localhost:5433` in case you want to look at the data.
+- Open it at `http://localhost:3000`, not `http://127.0.0.1:3000`: sign-in redirects to `localhost`, and a session cookie set on one address isn't sent to the other. On plain http the app also refuses requests addressed to any other host name, which protects your local copy (and your key) from DNS-rebinding attacks by websites you visit.
 
-Add any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` and restart. Tiers route to the first available provider (Anthropic → OpenAI → Google); override per tier with `MODEL_TIER_FAST|STANDARD|REASONING="<provider>:<model>"`. `TAVILY_API_KEY` (in the env or the *Settings → Tool credentials* vault) enables real web search. Without model keys everything runs in **Simulated mode**, clearly badged in the UI, on a deterministic mock provider and simulated tools. Real spend is capped per workspace by a monthly budget (`PLATFORM_DEFAULT_MONTHLY_BUDGET_USD`, editable by owners).
-
-### Commands
-
-| Command | What it does |
-|---|---|
-| `npm run dev` | Web server + worker for local development (`npm run dev:web` / `npm run worker` for either half) |
-| `npm run build` · `npm run build:worker` | Production web build (standalone) · bundled worker |
-| `npm run start:web` · `npm run start:worker` | Run the production builds |
-| `npm run typecheck` · `npm run lint` · `npm test` | Checks (tests need `.env.test` + the `ai_staffing_agency_test` database — see [Tests](#tests)) |
-| `npm run db:deploy` | Apply migrations (the release step) |
-| `npm run setup:dev` · `npm run db:seed:demo` | Migrations + demo data · re-seed the demo workspace (refused in production unless `ALLOW_DEMO_SEED=true`) |
-| `npm run audit:prod` | Dependency audit for production dependencies (currently 0 advisories) |
+Stop with `Ctrl+C` (or `docker compose down`). Your data stays in the `foreman` Docker volumes until you remove them.
 
 ---
 
-## What you can do
+## Bring your own keys
 
-1. **Hire** (`/hire`): describe a job → answer at most three follow-up questions → approve a structured **Job Spec** → meet the proposed worker (responsibilities, pipeline, tools, KPIs, cost estimate) → **Hire**. The first run starts immediately.
-2. **Watch it work** (`/runs/[id]`): a live timeline of every step in plain language — model turns, tool calls, deterministic steps, the deliverable, the evaluation — with a full debug trace for engineers.
-3. **Approve risky actions** (`/approvals`): tools that leave the workspace (sending a report by email) pause the run at *Needs approval* and show exactly what would be sent, including recipients. Nothing external happens without a human decision.
-4. **Review deliverables** (`/deliverables/[id]`): accept or reject with feedback — it feeds the worker's score.
-5. **Manage the worker** (`/workers/[id]`): overview, activity, deliverables, performance (score, KPIs, trend, reviews), cost, permissions (server-enforced tool grants and approval toggles), *Talk to worker* (questions, one-off instructions, permanent changes that become a proposed version), versions, debug.
-6. **Replace** (`/workers/[id]/replace/[versionId]`): the platform analyzes failed runs, low scores and rejected deliverables, proposes a revised worker with a diff and estimated quality/cost/latency deltas; *Hire replacement* retires the old version while the job and its full history survive.
-7. **Run the workspace** (`/settings`, `/usage`): members and roles, invitations, budget, password and sessions, recent security events, model providers, tool credentials; spend by day, worker, model and tool.
+Foreman has no hosted version and no account with anyone. Every model call is made from your machine with your key, and billed by your provider to your account.
 
-### Roles
-
-| Role | Can |
+| Variable | What it turns on |
 |---|---|
-| **Member** | View everything, run workers, talk to them, review deliverables, decide approvals for tools without external side effects, request performance reviews |
-| **Admin** | Everything above, plus hire, replace, pause and retire workers, change permissions and schedules, approve actions that leave the workspace, manage tool credentials, invite members |
-| **Owner** | Everything, plus roles, removing members, the monthly budget and workspace settings |
+| `ANTHROPIC_API_KEY` | Claude models (Haiku 4.5 / Sonnet 5 / Opus 5) |
+| `OPENAI_API_KEY` | OpenAI models (GPT-6 Luna / GPT-6.1 Sol) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini models (Gemini 3.5 Flash-Lite / Gemini 3.8 Flash) |
+| `TAVILY_API_KEY` | Live web search via [Tavily](https://tavily.com). Without it, `web_search` returns simulated results. |
 
-Permissions are enforced inside the server modules, never only in the UI.
+- **Where keys live:** in `.env` only. `.env` is git-ignored and never baked into the Docker image; the containers read it at start-up. After editing it, restart with `docker compose up` (or `npm run dev`). A Tavily key can also be stored per workspace in *Settings → Tool credentials*, where it is encrypted with `CREDENTIAL_ENCRYPTION_KEY`.
+- **One key is enough.** Workers ask for a *tier* (fast, standard or reasoning), and each tier goes to the first provider that has a key, in the order Anthropic → OpenAI → Google. To pin a tier to a model, set `MODEL_TIER_FAST|STANDARD|REASONING="<provider>:<model-id>"`, for example `MODEL_TIER_STANDARD=openai:gpt-6.1-sol`.
+- **Spend is capped.** Every model and tool call is metered. Real spend counts against a monthly budget per workspace (`PLATFORM_DEFAULT_MONTHLY_BUDGET_USD`, default $25, which owners can change in *Settings → Workspace*). A single run is also capped on cost, tool calls and duration (`PLATFORM_MAX_COST_PER_RUN_USD`, `PLATFORM_MAX_TOOL_CALLS_PER_RUN`, `PLATFORM_MAX_RUN_DURATION_SEC`). All of them are in `.env.example`. These are Foreman's limits. Set a spend limit in your provider's console as well.
+- **Check a key before you rely on it.** On the Node path run `npm run smoke:live`; on Docker, `docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs`. Either makes one tiny call per model your key would serve (up to three, a fraction of a cent) and says which one failed and how to fix it. Add `--deep` (`npm run smoke:live -- --deep`) to also try a tool round trip and a structured-output call, which is what real runs do; it costs a cent or two. A rejected key, an empty balance or an unknown model id also shows up in the app with the same fix, the first time Foreman calls the model.
+- **The demo workspace never spends your key.** It always runs Simulated, including its scheduled workers, whatever keys are set. Create your own workspace for live work.
+- **Simulated mode** is what you get with no model keys, or with `FORCE_SIMULATED=true`. Workers run on a deterministic mock model and simulated tools. Every screen works, including evaluations, performance reviews and Replace, and nothing leaves your machine or costs anything.
+- **Which mode am I in?** A **Simulated** chip sits in the top navigation whenever the mock model is in use, and simulated runs and deliverables carry the same badge. *Settings → AI providers* lists each provider as *Live* or *Simulated* and shows which model serves each tier.
+
+---
+
+## Quick start (Node, for development)
+
+Needs Node 22+ and Postgres 14+. If you don't have Postgres, `docker compose up -d db` starts one on `localhost:5433`.
+
+```bash
+npm install
+npm run setup:local         # writes .env (generated secrets, DATABASE_URL for the compose db on :5433, local defaults); never overwrites existing values
+npm run setup:dev           # migrations + demo seed
+npm run dev                 # web + worker on http://localhost:3000
+npm run smoke:live          # optional: one tiny real call per model your key would serve, to validate keys + model ids
+```
+
+If you're using your own Postgres, change `DATABASE_URL` in `.env` before `npm run setup:dev`. `npm run dev` starts the same two processes as production: the Next.js web server and the run worker. Development setup, tests and conventions are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Things worth knowing on the Node path:
+
+- **Already ran the Docker stack?** Stop its app first with `docker compose stop web worker` and keep `db` running. `npm run dev` refuses to start while something else is on port 3000. To use another port instead, run `npm run dev -- -p 3001`; sign-in follows the port.
+- **It doesn't touch the Docker app.** `setup:local` points `DATABASE_URL` at a separate `foreman_dev` database on the same Postgres, which `setup:dev` creates and seeds. If the Docker stack has already generated its secrets, `setup:local` copies them into `.env` rather than making new ones. That matters because `.env` wins in Docker too, and new secrets there would sign everyone out and make its stored credentials unreadable.
+- **Shell variables win over `.env`.** A provider key exported in your shell profile turns on live mode even if `.env` has none. `npm run setup:local` tells you which key it sees and where it comes from.
+- **Localhost only.** `npm run dev` listens on `localhost`, not your whole network, because sign-up is open and the demo password is public. [CONTRIBUTING.md](CONTRIBUTING.md) shows how to reach it from another device.
+
+## Quick start (Claude Code)
+
+Open the cloned repo in [Claude Code](https://claude.com/claude-code) and run:
+
+```
+/foreman-setup
+```
+
+The project skill (`.claude/skills/foreman-setup/SKILL.md`) checks for Docker (or Node and Postgres), creates `.env`, asks whether you want Simulated mode or your own provider, starts the stack, waits until it's ready and shows you how to confirm which mode you're in. It will ask you to paste your API key into `.env` yourself. It never asks for the key in chat.
+
+---
+
+## A tour of the core loop
+
+**Job → Worker → Runs → Deliverables → Evaluation → Replace**
+
+1. **Hire** (`/hire`). Describe the job in a sentence. Foreman asks at most three follow-up questions and writes a **Job Spec** for you to approve. It then proposes a worker, with responsibilities, a pipeline, tools, KPIs and a cost estimate. Click **Hire** and the first run starts right away.
+2. **Runs** (`/runs/[id]`). A live timeline of the run in plain language ("Alex searched the web for…"), with model turns, tool calls, deterministic steps, the deliverable and its evaluation. A debug trace is there for engineers.
+3. **Approvals** (`/approvals`). Anything that leaves the workspace, such as emailing a report, pauses the run at *Needs approval* and shows exactly what would be sent and to whom. Nothing external happens without a person deciding.
+4. **Deliverables** (`/deliverables/[id]`). Accept or reject with feedback. Your decision feeds the worker's score.
+5. **The worker's file** (`/workers/[id]`). Overview, activity, deliverables, performance (score, KPIs, trend, **performance reviews**), cost, permissions (tool grants and approval toggles, enforced on the server), **Talk to worker** (questions, one-off instructions, or permanent changes that become a proposed new version), versions and debug.
+6. **Replace** (`/workers/[id]/replace/[versionId]`). Foreman looks at failed runs, low scores and rejected deliverables, then proposes a revised worker with a diff and estimated changes in quality, cost and latency. **Hire replacement** retires the old version. The job and its whole history stay.
+
+Workspaces have three roles. *Members* run workers, review deliverables and decide most approvals. *Admins* also hire, replace, change permissions and invite people. *Owners* also manage roles, the budget and workspace settings.
 
 ---
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    Web[Next.js web server<br/>pages · server actions · API routes] --> Staffing[Staffing Engine<br/>scoping · blueprint design · cost estimate · hire]
-    Web --> Workers[Worker Manager<br/>versions · lifecycle · permissions · chat · replace]
-    Web --> Account[Accounts<br/>sign-up · invitations · members · sessions]
-    Web -->|enqueue only| Queue[(PostgreSQL<br/>runs · checkpoints · everything)]
-    WorkerProc[Worker process<br/>claims runs · heartbeats · scheduler · retention] --> Queue
-    WorkerProc --> Runtime[Execution Engine<br/>agent loop · deterministic steps · approvals]
-    Runtime --> Models[Model registry<br/>tier routing · pricing · providers · mock]
-    Runtime --> Tools[Tool registry<br/>server-side grants · approval gates · guarded fetch]
-    Runtime --> Evaluation[Evaluation Engine<br/>checks · LLM judge · feedback · score · reviews]
-    Security[Security layer<br/>rate limits · budgets · CSP · audit log · redaction] -.-> Web
-    Security -.-> WorkerProc
-```
+- **Two processes, one database.** The Next.js 15 web server serves the product and only ever *enqueues* runs. The worker (`src/worker.ts`) claims runs atomically, heartbeats, recovers crashed runs, runs the scheduler and the retention sweeps. Postgres is the queue, the lease manager and the ledger. There is no Redis or message broker.
+- **Blueprints are pipelines, not prompts.** A worker is a `WorkerBlueprint`: an ordered list of *agent* steps (LLM tool-calling loops) and *deterministic* steps (validate, dedupe, rank, stats, CSV, report). Foreman moves as much work as it can into deterministic steps, which is how workers get cheaper over time.
+- **Versions are immutable.** A worker version is locked at its first run, so every change is a new version and performance can be compared across versions.
+- **Permissions are server-side.** A tool runs only if the version's blueprint includes it, a grant exists, and, for approval-gated tools, a person approved that exact call.
+- **One model gateway.** Every LLM call goes through `src/server/models` (Vercel AI SDK v5), which routes tiers to providers, prices each call, enforces budgets and falls back to the deterministic mock.
 
-Two processes share one Postgres database: the **web server** (Next.js 15 App Router) enqueues work and serves the product; the **worker** (`src/worker.ts`) claims runs atomically, heartbeats, recovers stale runs, runs the scheduler and retention sweeps, and shuts down gracefully. Both can scale horizontally — claim fencing makes multiple workers safe.
-
-Module boundaries and the dependency direction are documented in [`docs/CONTRACTS.md`](docs/CONTRACTS.md):
-
-`domain ← models / simulation / secrets / activity / usage / security ← tools ← evaluation ← runtime ← staffing ← workers / account ← queries / app`
-
-### Key design decisions
-
-- **Blueprints are pipelines, not prompts.** A `WorkerBlueprint` is an ordered list of components sharing a run context: *agent* components (LLM tool-calling loops) and *deterministic* components (validate, dedupe, rank, stats, CSV, report). The Staffing Engine pushes as much work as possible into deterministic steps — which is how workers get cheaper over time.
-- **Immutable versions.** `Job → many WorkerVersions → many Runs`. A version is locked once a run references it; every change creates a new version, so performance can be compared across versions.
-- **Durable, DB-backed execution.** All executor state lives in Postgres (`Run.checkpoint`). Runs resume idempotently after an approval or a crash; an approved external action never executes twice.
-- **Permissions are server-side.** A tool call executes only if the tool is in the version's blueprint, a non-revoked grant exists, and — for approval-gated tools — an approval exists for that exact call. Role checks live in the modules, not the pages.
-- **Cost is bounded.** Every model and tool call is metered; real spend counts against a per-workspace monthly budget; blueprint limits are clamped to platform ceilings; scheduling is fair across workspaces.
-- **Simulated mode is a first-class product surface.** The mock provider is deterministic and content-aware, so evaluation, health and the Replace flow behave realistically without a single API call.
-
-### Security
-
-Threat model, controls, runbooks and an honest list of residual risks are in [`docs/SECURITY.md`](docs/SECURITY.md). In short: bcrypt(12) passwords with a policy and breached-password list; login throttling and lockout that cannot distinguish accounts; short, revocable sessions; a Postgres-backed rate limiter shared across instances; nonce-based CSP plus the standard header set; org-scoped queries everywhere; approval gates for anything external; a guarded URL fetcher (pinned DNS, private ranges blocked, per-run host allow-list); secrets encrypted with AES-256-GCM bound to their workspace; client-safe error messages with log references; an append-only security event log. Dependency advisories: 0.
-
-To report a vulnerability, see the *Reporting* section of `docs/SECURITY.md`.
-
-### Deployment
-
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) covers the environment reference, the first deploy, Docker (`Dockerfile`, `docker-compose.yml`), running the web tier on Vercel with the worker elsewhere, connection pooling, TLS, backups, zero-downtime migrations, health checks (`/api/health`, `/api/ready`), scaling, observability, retention and key rotation. CI (`.github/workflows/ci.yml`) runs migrations, typecheck, lint, tests, both builds and the production dependency audit.
-
-### Code map
-
-```
-prisma/                   schema, migrations, demo seed
-src/app/                  landing page · (auth) sign-in, sign-up, invite · (app) workforce, hire, jobs, workers, runs, deliverables, approvals, activity, usage, settings · api/health, api/ready
-src/components/           UI kit (see src/components/README.md)
-src/server/domain/        Zod schemas: JobSpec, WorkerBlueprint, evaluation, replacement, schedule
-src/server/account/       sign-up, password policy, invitations, members, workspace settings
-src/server/auth/          Auth.js config, credentials, sessions, permissions
-src/server/security/      rate limiter, budgets, CSP, audit log, redaction, public errors
-src/server/models/        llm — tier routing, pricing, providers, mock provider
-src/server/simulation/    deterministic fixtures + mock agent brain
-src/server/tools/         registry, permission enforcement, guarded HTTP, the tools
-src/server/runtime/       queue, executor, agent loop, deterministic steps, approvals, scheduler
-src/server/evaluation/    checks, LLM judge, feedback, score, health, reviews
-src/server/staffing/      scoping, family templates, blueprint design, cost estimate, hire
-src/server/workers/       versions, lifecycle, permissions, chat, replace
-src/server/maintenance/   retention sweeps
-src/server/log/           structured logger
-src/server/queries/       read-side view models per page
-src/worker.ts             the worker process entry
-tests/                    Vitest suites per module + tests/e2e
-docs/                     CONTRACTS · PRODUCTION · SECURITY · DEPLOYMENT · DESIGN
-```
+Stack: Next.js 15 · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Prisma 6 + PostgreSQL · Auth.js v5 · Vercel AI SDK v5 · Zod v4 · Vitest. Module boundaries are in [docs/CONTRACTS.md](docs/CONTRACTS.md), and the design system is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ---
 
-## Tests
+## Before you expose it beyond localhost
 
-One-time setup: a separate database plus a `.env.test` next to `.env` (copy `.env.test.example`). The database name must end in `_test`; the suite refuses to run otherwise. Migrations are applied automatically at the start of each run, provider keys are cleared and rate limits are disabled, so tests are hermetic and always run in Simulated mode.
+The Docker quick start is set up for one person on their own machine. Before anyone else can reach it:
 
-```bash
-createdb ai_staffing_agency_test
-cp .env.test.example .env.test      # set DATABASE_URL and a CREDENTIAL_ENCRYPTION_KEY
-npm test
-```
+- **Set real secrets yourself.** Put `AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` in `.env` (`openssl rand -base64 32` for each) and keep a copy of the encryption key somewhere other than your database backups. If you lose it, every stored credential becomes unreadable.
+- **Serve it over HTTPS** and set `AUTH_URL=https://your.host` so sign-in callbacks are pinned to your origin.
+- **Close sign-up.** Use `SIGNUP_MODE=closed` (invitations only) or `SIGNUP_MODE=invite` with a `SIGNUP_INVITE_CODE` of 12 or more characters.
+- **Turn off the demo.** Set `DEMO_MODE=false`. The demo account's password is published in this repo, and without `DEMO_MODE` it can't be signed into.
+- **Change the database password** from the compose default (`POSTGRES_PASSWORD`) and don't publish port 5433.
 
-The suite (1,300+ tests) covers schema validation, versioning immutability, run state transitions, atomic claiming, stale-lock recovery and graceful shutdown, server-side permission and role enforcement, approval pause/resume idempotency, rate limiting and lockouts, budgets and quotas, the password policy and invitation lifecycle, session revocation, CSP and header builders, redaction, evaluators and scoring, cost math, the replacement workflow, and a full end-to-end engine test.
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers the full environment reference, TLS, backups, scaling, health checks (`/api/health`, `/api/ready`) and key rotation. [docs/SECURITY.md](docs/SECURITY.md) covers the threat model and controls.
 
 ---
 
-## Known limitations
+## FAQ
 
-- Live provider paths are implemented against the AI SDK v5 types but have only been exercised in Simulated mode in this repository.
-- `read_dataset` and `send_notification` are simulated by design (sample datasets, outbox delivery); real connectors (Slack, Gmail, Sheets, HubSpot) and Stripe billing on the usage ledger are next.
-- No email provider yet: invitation links are shared by the inviting admin, and there is no self-service password reset. There is no 2FA.
-- Light theme only.
+**What does it cost?** Foreman is free. Model and search usage is billed by your providers to your own accounts. In Simulated mode nothing is billed. *Usage* shows spend by day, worker, model and tool, and the per-run and per-workspace caps above stop runaway spend.
+
+**Which models does it use?** By default, for the fast / standard / reasoning tiers: Anthropic `claude-haiku-4-5` / `claude-sonnet-5` / `claude-opus-5`, OpenAI `gpt-6-luna` / `gpt-6.1-sol` / `gpt-6.1-sol`, Google `gemini-3.5-flash-lite` / `gemini-3.8-flash` / `gemini-3.8-flash`. Override any tier with `MODEL_TIER_*`. If a model id is rejected, the key check above (`npm run smoke:live`) calls each model your key would serve and tells you which one failed.
+
+**Where does my data go?** Into the Postgres database on your machine. The only outbound traffic is what your workers do: calls to the model provider whose key you set, Tavily searches if you set that key, and pages the workers fetch through a guarded fetcher that blocks private network ranges. Foreman has no telemetry of its own. The Docker image also turns off Next.js telemetry; on the Node path, run `npx next telemetry disable` if you want the same.
+
+**Does it send email or post to Slack?** Not yet. `send_notification` and `read_dataset` are simulated by design, and sent reports land in an outbox. There is no email provider either, so invitation links are copied and shared by hand and there is no self-service password reset.
+
+**How do I reset everything?**
+- Docker: `docker compose down -v` removes the database *and* the generated secrets. The next `docker compose up` starts clean.
+- Node: `npm run db:reset` drops and recreates the database in `DATABASE_URL` (`foreman_dev` if `setup:local` wrote it), then re-seeds the demo. `npm run db:seed:demo` rebuilds only the demo workspace.
+
+**Can I change the port?** On Docker, set `WEB_PORT` (default 3000) or `POSTGRES_PORT` (default 5433) in `.env` and open the app on that port. `AUTH_URL` follows `WEB_PORT` unless you've set `AUTH_URL` in `.env` yourself, in which case change both. On Node, run `npm run dev -- -p 3001`. If you move Postgres, update `DATABASE_URL` too.
+
+---
+
+## Tests and scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Web server + worker (`npm run dev:web` / `npm run worker` for one half) |
+| `npm test` | Vitest suite (1,600+ tests, always in Simulated mode, against a separate `*_test` database; see [CONTRIBUTING.md](CONTRIBUTING.md#tests)) |
+| `npm run typecheck` · `npm run lint` | Checks |
+| `npm run db:deploy` | Apply migrations |
+| `npm run db:seed:demo` | Rebuild the demo workspace (refused in production unless `ALLOW_DEMO_SEED=true`) |
+| `npm run build` · `npm run build:worker` | Production web build · bundled worker |
+| `npm run smoke:live` | Checks your keys: one tiny real call per model they would serve (Docker: `docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs`) |
+| `npm run audit:prod` | Audit production dependencies |
+
+CI (`.github/workflows/ci.yml`) runs migrations, typecheck, lint, tests, both builds and the dependency audit, then checks the compose file without a `.env` and builds the Docker image.
+
+## Contributing
+
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). If you use Claude Code, [CLAUDE.md](CLAUDE.md) has the rules it follows in this repo. To report a vulnerability, open a private security advisory on GitHub (see [docs/SECURITY.md](docs/SECURITY.md#5-reporting-a-vulnerability)) rather than a public issue.
+
+## License
+
+[Apache License 2.0](LICENSE) © 2026 karank2512. See [NOTICE](NOTICE).

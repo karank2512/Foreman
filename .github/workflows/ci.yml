@@ -24,7 +24,7 @@ jobs:
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
-          POSTGRES_DB: ai_staffing_agency_test
+          POSTGRES_DB: foreman_test
           TZ: UTC
         ports: ["5432:5432"]
         options: >-
@@ -35,8 +35,8 @@ jobs:
 
     env:
       # Must contain "_test": tests/setup/global-setup.ts refuses any other database.
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ai_staffing_agency_test?schema=public&options=-c%20TimeZone%3DUTC
-      SHADOW_DATABASE_URL: postgresql://ci:ci@localhost:5432/ai_staffing_agency_shadow?schema=public
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/foreman_test?schema=public&options=-c%20TimeZone%3DUTC
+      SHADOW_DATABASE_URL: postgresql://ci:ci@localhost:5432/foreman_shadow?schema=public
       AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789abcdef
       AUTH_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
@@ -63,7 +63,7 @@ jobs:
 
       - name: Fail if schema.prisma has drifted from prisma/migrations
         run: |
-          PGPASSWORD=ci createdb -h localhost -U ci ai_staffing_agency_shadow
+          PGPASSWORD=ci createdb -h localhost -U ci foreman_shadow
           npx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
@@ -101,14 +101,23 @@ jobs:
       - name: Audit production dependencies
         run: npm run audit:prod
 
+  # The self-hosting path (`docker compose up`) is the first thing most people run, so every change proves it still
+  # parses and builds, not just pushes to main.
   image:
-    name: docker image
+    name: docker image · compose file
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      # No .env on purpose: the quick start must work without one (`env_file: required: false`, Compose v2.24+).
+      - name: Validate docker-compose.yml without a .env
+        run: |
+          docker compose version
+          test ! -e .env
+          docker compose config --quiet
+
       - uses: docker/setup-buildx-action@v3
       # Build only: publishing is deliberately left to the deploy workflow that owns the registry credentials.
       - uses: docker/build-push-action@v6
@@ -116,6 +125,14 @@ jobs:
           context: .
           target: runner
           push: false
+          load: true
+          tags: foreman:ci
           build-args: APP_VERSION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Check the compose-only files and bundles in the image
+        run: |
+          docker run --rm --entrypoint sh foreman:ci -c 'test -f docker/entrypoint.sh && test -f dist/worker.cjs && test -f dist/seed-demo.cjs'
+          # With no keys the key check must say Simulated and exit 0; this also proves its externals resolve.
+          docker run --rm foreman:ci node dist/smoke-live.cjs | tee /dev/stderr | grep -q "Simulated mode"

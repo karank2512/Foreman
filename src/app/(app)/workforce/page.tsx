@@ -25,7 +25,7 @@ const RECENT_ACTIVITY_ROWS = 6;
 
 /**
  * Tools whose approval needs an admin. The attention item carries the tool's display name rather than its
- * registry name (see CONTRACT ISSUES), so the match is on the label.
+ * registry name (the workforce query's contract only exposes the label), so the match is on the label.
  */
 const EXTERNAL_TOOL_LABELS = new Set(
   tools

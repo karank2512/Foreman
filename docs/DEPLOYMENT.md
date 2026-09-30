@@ -139,13 +139,76 @@ It runs as the non-root `node` user and carries a `HEALTHCHECK` against `/api/he
 `.env*`, `.git`, `node_modules` and test fixtures out of the build context, so nothing secret is ever baked in —
 the image is configured entirely through the environment.
 
-`docker-compose.yml` brings the whole stack up locally or on a single box: Postgres with a health check, the
-`migrate` one-shot (web and worker wait for `service_completed_successfully`), web, and worker.
+### Docker Compose on your own machine
+
+`docker-compose.yml` runs the whole product on one machine with zero configuration. It is the quickstart in the
+README, and it is meant for **your own machine**, not the internet. It needs Docker with Compose v2.24 or newer
+(any current Docker Desktop); nothing else has to be installed on the host:
 
 ```bash
-cp .env.example .env     # fill in AUTH_SECRET and CREDENTIAL_ENCRYPTION_KEY
-docker compose up --build
+git clone https://github.com/karank2512/Foreman.git && cd Foreman
+cp .env.example .env     # optional: set ONE provider key. No key = Simulated mode.
+docker compose up        # first run builds the image; then open http://localhost:3000
 ```
+
+| Service | What it does |
+|---|---|
+| `db` | Postgres 16, clock pinned to UTC, data in the `pgdata` volume. Published on `127.0.0.1:5433` so `npm run dev` can use it too. |
+| `setup` | One-shot; web and worker wait for it to succeed. Generates the secrets on first boot, runs `prisma migrate deploy`, and seeds the demo workspace if it does not exist yet (`dist/seed-demo.cjs`, so a restart never wipes it). A failed demo seed is logged and does not block start-up. |
+| `web` | `node server.js` on `127.0.0.1:${WEB_PORT:-3000}`. |
+| `worker` | `node dist/worker.cjs`, which executes every run. |
+
+What it does for you, and how to change it:
+
+- **Secrets.** `docker/entrypoint.sh` generates `AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` once, into the
+  `secrets` volume, and loads them into every service. A non-empty value in `.env` always wins. The entrypoint
+  only does this when `FOREMAN_SECRETS_FILE` is set, which only the compose file does: the image run anywhere
+  else behaves as described above and generates nothing.
+- **`.env` is optional** (`required: false`). When it exists every service reads it, which is how provider keys
+  and any other setting reach the containers. `DATABASE_URL` always points at `db`, whatever `.env` says.
+- **Local defaults**, each overridable in `.env`: `AUTH_URL=http://localhost:$WEB_PORT`, `SIGNUP_MODE=open`,
+  `DEMO_MODE=true` (`false` also skips the demo seed), `APP_VERSION=local`. `ALLOW_DEMO_SEED=true` is set on the
+  `setup` job only, never on web or worker.
+- **Ports** are bound to `127.0.0.1`. Change them with `WEB_PORT` and `POSTGRES_PORT` in `.env`.
+
+It runs with `NODE_ENV=production` and the same hardening as a real deployment. The only differences for plain
+http come from `AUTH_URL`, never from a separate "insecure" switch:
+
+- Session cookies lose the `__Secure-` prefix and the `Secure` flag because `AUTH_URL` is `http://`
+  (`src/server/auth/index.ts`). An `https://` `AUTH_URL` keeps both.
+- `src/server/env.ts` accepts an `http://` `AUTH_URL` in production only for `localhost`, `127.0.0.1` and `[::1]`.
+- With an `http://` `AUTH_URL`, the middleware answers only requests whose `Host` is a loopback name or the
+  `AUTH_URL` host, and gives everything else `421` (`src/server/security/local-host.ts`). The stack has open
+  sign-up and your provider key behind it, and a web page you visit could otherwise rebind its own domain to
+  127.0.0.1 and drive it from your browser (DNS rebinding). An `https://` `AUTH_URL` skips the check.
+- The page CSP leaves out `upgrade-insecure-requests` when `AUTH_URL` is `http://` (`src/middleware.ts`).
+  Safari's engine applies it even on localhost, so every script would be requested over https and the page would
+  never hydrate. Every other directive is unchanged. The HSTS header is still sent; browsers ignore it over http.
+- With no proxy in front, Next.js sets `X-Forwarded-For` to the connecting address. On this stack that is
+  Docker's gateway, so all local traffic shares one rate-limit bucket. That is fine for one machine.
+
+The demo workspace always runs Simulated, whatever keys are set (`isOrgSimulated` in `src/server/models`), so its
+scheduled workers never spend a real key. Sign-up is open and the demo password is public, so do not expose this
+stack as it is. To serve other people,
+put it behind https and follow §3: an `https://` `AUTH_URL`, `SIGNUP_MODE=closed` or `invite`,
+`DEMO_MODE=false`, and a managed database.
+
+Day to day:
+
+```bash
+docker compose logs -f web worker        # what the app and the worker are doing
+docker compose logs setup db             # why the one-shot setup (secrets, migrations, demo seed) failed
+docker compose up -d                     # after editing .env: recreates the containers with the new values
+docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs   # check your provider key(s)
+git pull && docker compose up --build    # update to the latest version (migrations run in `setup`)
+docker compose down                      # stop; your data stays in the volumes
+docker compose down -v                   # stop and DELETE the database and the generated secrets
+```
+
+For development with Node instead, `docker compose up -d db` starts only the database, and
+`npm run setup:local` writes a `.env` pointing at a separate `foreman_dev` database on it, reusing the stack's
+generated secrets if it has run (see the README). Stop the app containers first (`docker compose stop web worker`):
+both want port 3000.
 
 ### Vercel for web, worker elsewhere
 
@@ -189,7 +252,7 @@ rejects the connection or, with `ignore_startup_parameters=options`, silently dr
 database instead, once:
 
 ```sql
-ALTER DATABASE ai_staffing_agency SET timezone TO 'UTC';
+ALTER DATABASE foreman SET timezone TO 'UTC';  -- your database's name
 ```
 
 Also set `TZ=UTC` in the containers: worker cadence hours ("every weekday at 09:00") are evaluated in the
@@ -204,7 +267,7 @@ Use two roles. `app_migrator` owns the schema and is used only by the migrate jo
 worker connect with and has no DDL rights:
 
 ```sql
-GRANT CONNECT ON DATABASE ai_staffing_agency TO app_runtime;
+GRANT CONNECT ON DATABASE foreman TO app_runtime;  -- your database's name
 GRANT USAGE ON SCHEMA public TO app_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;

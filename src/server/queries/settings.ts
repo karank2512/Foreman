@@ -37,6 +37,8 @@ export interface SettingsProviders {
   mode: "live" | "simulated";
   /** FORCE_SIMULATED is set — keys are ignored on purpose. */
   forceSimulated: boolean;
+  /** The demo workspace, which always runs on the simulator whatever keys the server has. */
+  demoWorkspace: boolean;
   providers: SettingsProvider[];
   tiers: SettingsTierRoute[];
 }
@@ -94,14 +96,14 @@ export async function getSettingsPage(organizationId: string, opts: { role?: Use
   const permissions = permissionSubset(opts.role, SETTINGS_PERMISSION_KEYS);
   const isOperator = permissions["org.manage"];
   const [organization, members, stored] = await Promise.all([
-    db.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, slug: true, createdAt: true } }),
+    db.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, slug: true, createdAt: true, isDemo: true } }),
     db.user.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, role: true }, orderBy: { createdAt: "asc" } }),
     listCredentials(organizationId),
   ]);
 
   const status = llm.status();
   const providerLabels = new Map(status.providers.map((p) => [p.id as string, p.label]));
-  const simulatedMode = status.mode === "simulated";
+  const simulatedMode = status.mode === "simulated" || organization.isDemo;
   const storedByName = new Map(stored.map((c) => [c.name, c]));
 
   return {
@@ -117,6 +119,7 @@ export async function getSettingsPage(organizationId: string, opts: { role?: Use
     providers: {
       mode: status.mode,
       forceSimulated: config.forceSimulated,
+      demoWorkspace: organization.isDemo,
       providers: status.providers.map((p) => ({ id: p.id, label: p.label, available: p.available, envVar: isOperator ? p.envVar : null })),
       tiers: (Object.keys(TIER_OVERRIDE_ENV) as SettingsTierRoute["tier"][]).map((tier) => {
         const route = status.tiers[tier];

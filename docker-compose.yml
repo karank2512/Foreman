@@ -1,27 +1,48 @@
-# Local/staging stack: Postgres, a one-shot migration job, the web tier and the run worker.
+# Foreman on your own machine: Postgres, a one-shot setup job, the web app and the run worker.
 #
-#   cp .env.example .env    # fill in AUTH_SECRET and CREDENTIAL_ENCRYPTION_KEY
-#   docker compose up --build
+#   docker compose up        # first run builds the image; then open http://localhost:3000
 #
-# Secrets are never baked into an image: every service reads .env at run time. DATABASE_URL is overridden here
-# because the database is reachable as "db" on the compose network, not on localhost.
+# .env is optional. Without one, Foreman runs in Simulated mode: no API keys, no cost, clearly badged in the UI.
+# To use real models, `cp .env.example .env` and set ONE provider key — calls are billed to that key.
+#
+# Zero-config on purpose:
+#   - AUTH_SECRET and CREDENTIAL_ENCRYPTION_KEY are generated on first boot (docker/entrypoint.sh) and kept in the
+#     `secrets` volume. Values you set in .env always win.
+#   - It serves plain http on localhost, sign-up is open and the demo workspace is seeded. Turn either off in .env
+#     with SIGNUP_MODE=closed / DEMO_MODE=false.
+#   - Ports are bound to 127.0.0.1 only: this stack is for your machine, not the internet. A real deployment
+#     (https, closed sign-up, managed Postgres) is described in docs/DEPLOYMENT.md.
+#
+# `docker compose down` stops everything and keeps your data; `docker compose down -v` also deletes it.
 
-name: ai-staffing-agency
+name: foreman
+
+x-app-env: &app-env
+  NODE_ENV: production
+  TZ: UTC
+  # The database is reachable as "db" on the compose network, never on localhost, so this always overrides .env.
+  DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-foreman}?schema=public&connection_limit=10&pool_timeout=20
+  # Local defaults. Each one can be overridden from .env (compose reads it for these ${…} values too).
+  AUTH_URL: ${AUTH_URL:-http://localhost:${WEB_PORT:-3000}}
+  SIGNUP_MODE: ${SIGNUP_MODE:-open}
+  DEMO_MODE: ${DEMO_MODE:-true}
+  APP_VERSION: ${APP_VERSION:-local}
+  # Tells docker/entrypoint.sh to generate (once) and load the app secrets.
+  FOREMAN_SECRETS_FILE: /var/lib/foreman/secrets.env
 
 x-app: &app
   build:
     context: .
     target: runner
     args:
-      APP_VERSION: ${APP_VERSION:-compose}
-  env_file: .env
-  environment:
-    NODE_ENV: production
-    TZ: UTC
-    DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ai_staffing_agency}?schema=public&connection_limit=10&pool_timeout=20
-  depends_on:
-    db:
-      condition: service_healthy
+      APP_VERSION: ${APP_VERSION:-local}
+  # No shared `image:` name on purpose: three services building one tag race each other. BuildKit builds the
+  # image once and the three services share its layers.
+  # Provider keys and every other setting come from .env when it exists.
+  env_file:
+    - path: .env
+      required: false
+  entrypoint: ["sh", "/app/docker/entrypoint.sh"]
 
 services:
   db:
@@ -29,7 +50,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
-      POSTGRES_DB: ${POSTGRES_DB:-ai_staffing_agency}
+      POSTGRES_DB: ${POSTGRES_DB:-foreman}
       TZ: UTC
       PGTZ: UTC
     # The app stores UTC and several queries compare against now(); pin the server clock to UTC.
@@ -37,56 +58,74 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-ai_staffing_agency}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-foreman}"]
       interval: 5s
       timeout: 3s
       retries: 12
+    # Published for the Node path: `npm run setup:local` points DATABASE_URL at a separate foreman_dev database on
+    # this server (…@localhost:5433/foreman_dev), and the tests use foreman_test.
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    restart: unless-stopped
 
-  # Release step. Runs to completion before web and worker start, so the schema is never behind the code.
-  migrate:
+  # One-shot, before web and worker start: generates the secrets on first boot, applies migrations (so the schema
+  # is never behind the code), and seeds the demo workspace if it does not exist yet.
+  setup:
     <<: *app
-    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      <<: *app-env
+      # The demo seed refuses to touch a production database without this. It is set here, on this local stack's
+      # setup job only — never on web or worker.
+      ALLOW_DEMO_SEED: "true"
+    # The prisma binary directly rather than through npx, which would also check the npm registry on every start.
+    command: ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/seed-demo.cjs"]
+    volumes:
+      - secrets:/var/lib/foreman
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      disable: true
     restart: "no"
 
   web:
     <<: *app
     environment:
-      NODE_ENV: production
-      TZ: UTC
+      <<: *app-env
       SERVICE_NAME: web
       EXECUTOR_MODE: "off"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ai_staffing_agency}?schema=public&connection_limit=10&pool_timeout=20
     command: ["node", "server.js"]
+    volumes:
+      - secrets:/var/lib/foreman:ro
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
-      migrate:
+      setup:
         condition: service_completed_successfully
     restart: unless-stopped
 
   worker:
     <<: *app
     environment:
-      NODE_ENV: production
-      TZ: UTC
+      <<: *app-env
       SERVICE_NAME: worker
       # Below stop_grace_period, so leases are handed back before Docker sends SIGKILL.
       SHUTDOWN_GRACE_MS: "20000"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ai_staffing_agency}?schema=public&connection_limit=10&pool_timeout=20
     command: ["node", "dist/worker.cjs"]
+    volumes:
+      - secrets:/var/lib/foreman:ro
     healthcheck:
       disable: true
     stop_grace_period: 30s
     depends_on:
       db:
         condition: service_healthy
-      migrate:
+      setup:
         condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
   pgdata:
+  secrets:

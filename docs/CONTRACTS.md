@@ -1,8 +1,10 @@
 # Module contracts
 
+> **Contributors:** the FROZEN / `[owner]` labels below record how the original build split the work between modules. They don't restrict you. Treat FROZEN files as shared contracts: change them deliberately, update every caller in the same PR, and follow the rules in [`CLAUDE.md`](../CLAUDE.md) and [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
 Monolithic Next.js app with clean module boundaries under `src/server/`. Each module exposes its public API **only** from its `index.ts`. Other modules import from `@/server/<module>` (never deep paths, except `types.ts` / `schemas.ts` files and `@/server/domain`).
 
-**FROZEN** = written by the lead; do not edit. Report problems under "CONTRACT ISSUES" in your final output.
+**FROZEN** = shared contract that many modules depend on; change it deliberately and update every caller in the same PR.
 
 ```
 prisma/schema.prisma, prisma/migrations/   data model                                  FROZEN

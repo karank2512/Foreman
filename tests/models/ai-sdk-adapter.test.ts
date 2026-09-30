@@ -13,7 +13,7 @@ import {
 } from "@/server/domain";
 import { AppError } from "@/server/errors";
 import { TOOL_INPUT_SCHEMAS } from "@/server/tools/schemas";
-import { createAiSdkProvider, mapFinishReason, toUsage } from "@/server/models/providers/ai-sdk";
+import { createAiSdkProvider, mapFinishReason, REASONING_HEADROOM_TOKENS, toUsage } from "@/server/models/providers/ai-sdk";
 import type { ChatMessage } from "@/server/models/types";
 import { fetchTool, searchTool } from "./helpers";
 
@@ -78,7 +78,8 @@ describe("models: AI SDK adapter (offline)", () => {
     // Exactly one provider round trip: the runtime owns the loop.
     expect(model.doGenerateCalls).toHaveLength(1);
     const call = model.doGenerateCalls[0];
-    expect(call.maxOutputTokens).toBe(2_000);
+    // The caller's cap is for the visible answer; reasoning models get headroom on top.
+    expect(call.maxOutputTokens).toBe(2_000 + REASONING_HEADROOM_TOKENS);
     expect(call.toolChoice).toEqual({ type: "auto" });
     expect(call.tools?.map((t) => t.name)).toEqual(["web_search", "fetch_url"]);
     expect(call.tools?.[0]).toMatchObject({ type: "function", description: "Search the web" });
@@ -92,7 +93,7 @@ describe("models: AI SDK adapter (offline)", () => {
   it("sends no tools at all when none are offered", async () => {
     const model = new MockLanguageModelV2({ doGenerate: async () => textResult("Final answer.") });
     const provider = createAiSdkProvider("openai", { resolveModel: () => model });
-    const result = await provider.generateText("gpt-5", {
+    const result = await provider.generateText("gpt-6.1-sol", {
       tier: "standard",
       messages: [{ role: "user", content: "Summarize" }],
       mock: neverMock,
@@ -150,7 +151,7 @@ describe("models: AI SDK adapter (offline)", () => {
       doGenerate: async () => textResult('```json\n{"title":"Spec","note":null,"questions":[]}\n```'),
     });
     const provider = createAiSdkProvider("google", { resolveModel: () => model });
-    const result = await provider.generateObject("gemini-2.5-pro", {
+    const result = await provider.generateObject("gemini-3.8-flash", {
       tier: "standard",
       prompt: "Scope this job",
       schema: SpecSchema,

@@ -9,6 +9,9 @@ export const MODEL_ENV_KEYS = [
   "MODEL_TIER_FAST",
   "MODEL_TIER_STANDARD",
   "MODEL_TIER_REASONING",
+  // Often inherited from the shell (Anthropic tooling exports ANTHROPIC_BASE_URL); unset unless a test asks for it.
+  "ANTHROPIC_BASE_URL",
+  "OPENAI_BASE_URL",
 ] as const;
 
 type ModelEnv = Partial<Record<(typeof MODEL_ENV_KEYS)[number], string>>;

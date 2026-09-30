@@ -2,6 +2,7 @@ import { createElement as h, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { passwordChecklist } from "@/app/(auth)/schema";
+import { REPO_URL } from "@/lib/project";
 import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/server/auth/access";
 import { config } from "@/server/config";
 import { loadForSsr } from "../pages/_ssr";
@@ -67,13 +68,14 @@ describe("landing page markup", () => {
     for (const list of responsive) expect(list, list).toMatch(/(?:^|\s)grid-cols-\d+(?:\s|$)/);
   });
 
-  it("links only to sections that exist on the page and to public routes (design-public-auth-009)", () => {
+  it("links only to sections that exist on the page, to public routes and to the source (design-public-auth-009)", () => {
     const links = hrefs(landingHtml);
     expect(links.length).toBeGreaterThan(0);
     for (const href of links) {
       if (href.startsWith("#")) expect(landingHtml, href).toContain(`id="${href.slice(1)}"`);
-      else expect([SIGN_UP_PATH, SIGN_IN_PATH], href).toContain(href);
+      else expect([SIGN_UP_PATH, SIGN_IN_PATH, REPO_URL], href).toContain(href);
     }
+    expect(links).toContain(REPO_URL);
     const copy = text(landingHtml);
     expect(copy).not.toContain("How workers are designed");
     // No "talk to us" promise without a way to talk to anyone.
@@ -97,14 +99,14 @@ describe("marketing footer markup (design-public-auth-005/006)", () => {
 });
 
 describe("sign-up form markup (design-public-auth-005)", () => {
-  it("has no consent checkbox, an enabled submit button, and says plainly that no terms exist yet", () => {
+  it("has no consent checkbox, an enabled submit button, and says plainly where the data stays", () => {
     expect(signUpHtml).not.toMatch(/role="checkbox"|type="checkbox"/);
     expect(signUpHtml).not.toMatch(/I agree/i);
     const submit = /<button\b[^>]*type="submit"[^>]*>/.exec(signUpHtml)?.[0] ?? "";
     expect(submit).not.toBe("");
     // The attribute, not the `disabled:` variants in its class list.
     expect(submit).not.toMatch(/\sdisabled(?:=|\s|>)/);
-    expect(text(signUpHtml)).toContain("there are no published terms or privacy policy yet");
+    expect(text(signUpHtml)).toContain("stay on the server running this copy of Foreman");
   });
 });
 

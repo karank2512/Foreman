@@ -71,7 +71,7 @@ describe("consent copy (design-public-auth-005)", () => {
     expect(form).not.toContain("<Checkbox");
     expect(form).not.toContain("Tick the box");
     expect(form).not.toMatch(/<SubmitButton[^>]*disabled=/);
-    expect(form).toContain("no published terms or privacy policy yet");
+    expect(form).toContain("stay on the server running this copy of Foreman");
   });
 
   it("drops the unlinked Privacy · Terms words from the auth footer", async () => {

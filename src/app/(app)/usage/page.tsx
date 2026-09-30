@@ -67,6 +67,8 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
   const previous = usage.hasUsage ? await getUsagePage(s.organizationId, days, subDays(now, days)) : null;
   const trend = spendTrend(totals.costUsd, previous?.totals.costUsd ?? 0);
   const mixedSimulation = usage.byModel.some((m) => m.simulated) && usage.byModel.some((m) => !m.simulated);
+  // Simulated calls are priced at reference rates and never billed, so a total made only of them is an estimate.
+  const onlySimulated = usage.simulatedMode || (usage.byModel.length > 0 && usage.byModel.every((m) => m.simulated));
   // The ledger keeps the model id; "By model" names each row by its tier through today's routing.
   const routes = (["fast", "standard", "reasoning"] as const satisfies readonly ModelTier[]).map((tier) => ({
     tier,
@@ -87,7 +89,9 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
             <Card className="p-0">
               <div className="grid gap-px bg-border lg:grid-cols-[1.3fr_1fr]">
                 <div className="bg-card p-6 sm:p-8">
-                  <p className="text-footnote font-medium text-muted-foreground">Spent in the last {days} days</p>
+                  <p className="text-footnote font-medium text-muted-foreground">
+                    {onlySimulated ? `Estimated cost, last ${days} days (Simulated)` : `Spent in the last ${days} days`}
+                  </p>
                   <p className="text-metric-xl mt-2 text-foreground">{formatUsd(totals.costUsd)}</p>
                   <p className="text-footnote mt-2 text-muted-foreground">
                     <Trend trend={trend} days={days} />

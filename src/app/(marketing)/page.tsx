@@ -6,7 +6,7 @@ import { Hero } from "./_components/hero";
 import { HowItWorks } from "./_components/how-it-works";
 import { InkBand } from "./_components/ink-band";
 import { ApprovalMock, ResumeMock, TimelineMock } from "./_components/mock-cards";
-import { PricingTeaser } from "./_components/pricing-teaser";
+import { OpenSource } from "./_components/open-source";
 import { ReviewTiles } from "./_components/review-tiles";
 import { Trust } from "./_components/trust";
 
@@ -84,7 +84,7 @@ export default async function LandingPage() {
       <InkBand />
       <ReviewTiles />
       <Trust />
-      <PricingTeaser />
+      <OpenSource />
       <FinalCta signedIn={signedIn} />
     </>
   );

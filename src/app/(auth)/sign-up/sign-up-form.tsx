@@ -18,8 +18,8 @@ interface SignUpFormProps {
  * back as state). Inputs are controlled: React resets uncontrolled fields after a form action, which would
  * wipe everything typed on a failed attempt.
  *
- * There is no "I agree to the Terms" checkbox on purpose: no terms or privacy policy have been published, and
- * asking for consent to documents nobody can read is worse than saying so plainly under the button.
+ * There is no "I agree to the Terms" checkbox on purpose: Foreman is self-hosted, so there is no service whose terms
+ * anyone could accept. The line under the button says where the data actually goes instead.
  */
 export function SignUpForm({ inviteCodeRequired, passwordMinLength }: SignUpFormProps) {
   const [state, formAction, isPending] = useActionState<SignUpState, FormData>(signUpAction, { error: null });
@@ -104,8 +104,7 @@ export function SignUpForm({ inviteCodeRequired, passwordMinLength }: SignUpForm
         <SubmitButton pending={isPending} label="Create account" pendingLabel="Creating account…" />
       </div>
       <p className="text-center text-[13px] leading-[18px] text-muted-foreground">
-        Early access: there are no published terms or privacy policy yet. You&rsquo;ll be asked to accept them
-        once they exist.
+        Your workspace and its data stay on the server running this copy of Foreman.
       </p>
     </form>
   );

@@ -22,10 +22,18 @@ const PROVIDER_INFO: Readonly<Record<ProviderId, { label: string; envVar: string
   mock: { label: "Simulated (built-in)", envVar: null },
 };
 
+/**
+ * Default model per tier and provider. Checked 2026-09-30 against each provider's own docs:
+ *  - Anthropic: the bundled Claude API reference (claude-haiku-4-5 / claude-sonnet-5 / claude-opus-5 are current ids).
+ *  - OpenAI: the gpt-5 / gpt-5-mini snapshots shut down on 2026-12-11, so the defaults are the GA GPT-6 models.
+ *  - Google: the 2.5 models are only served to projects that already used them; new keys need the 3.x models
+ *    Google recommends for new projects (both stable, not preview).
+ * Pin anything else with MODEL_TIER_<TIER>="<provider>:<model-id>"; `npm run smoke:live` checks the ids with one tiny call each.
+ */
 export const DEFAULT_TIER_MODELS: Readonly<Record<LiveProviderId, Readonly<Record<ModelTier, string>>>> = {
   anthropic: { fast: "claude-haiku-4-5", standard: "claude-sonnet-5", reasoning: "claude-opus-5" },
-  openai: { fast: "gpt-5-mini", standard: "gpt-5", reasoning: "gpt-5" },
-  google: { fast: "gemini-2.5-flash", standard: "gemini-2.5-pro", reasoning: "gemini-2.5-pro" },
+  openai: { fast: "gpt-6-luna", standard: "gpt-6.1-sol", reasoning: "gpt-6.1-sol" },
+  google: { fast: "gemini-3.5-flash-lite", standard: "gemini-3.8-flash", reasoning: "gemini-3.8-flash" },
 };
 
 /** Model ids reported by the mock provider. Priced at the tier's reference model (see pricing.ts). */
@@ -43,6 +51,16 @@ const TIER_ENV_VARS: Readonly<Record<ModelTier, string>> = {
 
 export function providerLabel(id: ProviderId): string {
   return PROVIDER_INFO[id].label;
+}
+
+/** The env var that holds a live provider's key ("ANTHROPIC_API_KEY"). */
+export function providerEnvVar(id: LiveProviderId): string {
+  return PROVIDER_INFO[id].envVar ?? "";
+}
+
+/** The env var that pins a tier to a model ("MODEL_TIER_STANDARD"). */
+export function tierEnvVar(tier: ModelTier): string {
+  return TIER_ENV_VARS[tier];
 }
 
 function isLiveProviderId(value: string): value is LiveProviderId {
@@ -83,15 +101,21 @@ export function resetRouteWarnings(): void {
   warned.clear();
 }
 
+function parseTierOverride(raw: string): { provider: string; model: string } {
+  const separator = raw.indexOf(":");
+  return {
+    provider: separator > 0 ? raw.slice(0, separator).trim().toLowerCase() : "",
+    model: separator > 0 ? raw.slice(separator + 1).trim() : "",
+  };
+}
+
 /** Parse MODEL_TIER_<TIER>="<provider>:<model>". Invalid or unusable overrides are ignored (with a warning). */
 function tierOverride(tier: ModelTier, available: readonly LiveProviderId[]): TierRoute | null {
   const envVar = TIER_ENV_VARS[tier];
   const raw = process.env[envVar]?.trim();
   if (!raw) return null;
 
-  const separator = raw.indexOf(":");
-  const provider = separator > 0 ? raw.slice(0, separator).trim().toLowerCase() : "";
-  const model = separator > 0 ? raw.slice(separator + 1).trim() : "";
+  const { provider, model } = parseTierOverride(raw);
   if (!isLiveProviderId(provider) || !model) {
     warnOnce(
       `Ignoring ${envVar}="${raw}": expected "<provider>:<model>" with provider one of ${LIVE_PROVIDER_ORDER.join(", ")}.`,
@@ -117,6 +141,19 @@ export function routeTier(tier: ModelTier): TierRoute {
 
   const provider = available[0];
   return { provider, model: DEFAULT_TIER_MODELS[provider][tier] };
+}
+
+/**
+ * The model each tier would run on `provider` if it served that tier: the MODEL_TIER_* override when it names this
+ * provider, otherwise the default. Used by `npm run smoke:live` to check every id a key would be asked to serve.
+ */
+export function providerTierModels(provider: LiveProviderId): Record<ModelTier, string> {
+  const models = { ...DEFAULT_TIER_MODELS[provider] };
+  for (const tier of MODEL_TIERS) {
+    const override = parseTierOverride(process.env[TIER_ENV_VARS[tier]]?.trim() ?? "");
+    if (override.provider === provider && override.model) models[tier] = override.model;
+  }
+  return models;
 }
 
 export function getStatus(): ModelStatus {

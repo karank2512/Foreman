@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { Markdown } from "@/components/markdown";
 import { PageHeader } from "@/components/page-header";
 import { Section } from "@/components/section";
-import { SimulatedBadge } from "@/components/simulated-badge";
+import { SimulatedBadge, SimulatedWorkNote } from "@/components/simulated-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { WorkerAvatar } from "@/components/worker-avatar";
 import { Button } from "@/components/ui/button";
@@ -186,7 +186,14 @@ export default async function DeliverablePage({ params }: { params: Promise<{ de
           width of the whole phone layout. */}
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
         <div className="min-w-0 space-y-14 lg:col-span-8">
-          <Artifact d={d} />
+          {run.simulated ? (
+            <div className="space-y-4">
+              <SimulatedWorkNote />
+              <Artifact d={d} />
+            </div>
+          ) : (
+            <Artifact d={d} />
+          )}
 
           <Section title="How it measured up" description="Automated checks, the reviewer’s read, and your own verdict.">
             <EvaluationFindings

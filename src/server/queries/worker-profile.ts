@@ -28,7 +28,7 @@ import {
 } from "@/server/domain";
 import { notFound } from "@/server/errors";
 import { computeWorkerScore, getWorkerMetrics } from "@/server/evaluation";
-import { llm } from "@/server/models";
+import { isOrgSimulated } from "@/server/models";
 import { renderTitle } from "@/server/runtime";
 import { tools } from "@/server/tools";
 import { getWorkerCostSummary, type WorkerCostSummary } from "@/server/usage";
@@ -176,7 +176,7 @@ export async function getWorkerHeader(
         }
       : null,
     summary: blueprint?.success ? blueprint.data.persona.summary : null,
-    simulated: llm.isSimulated(),
+    simulated: await isOrgSimulated(organizationId),
     inFlightRun: inFlight ? { id: inFlight.id, status: inFlight.status, trigger: inFlight.trigger, createdAt: inFlight.createdAt.toISOString() } : null,
     pendingApprovals,
     openProposal: proposal ? { versionId: proposal.id, version: proposal.version, changeReason: proposal.changeReason } : null,
@@ -665,6 +665,6 @@ export async function getWorkerCost(organizationId: string, workerId: string, da
     modelCostUsd: Math.round(modelCostUsd * 1e6) / 1e6,
     toolCostUsd: Math.round(toolCostUsd * 1e6) / 1e6,
     simulatedShare: ledgerTotal > 0 ? Math.round((simulatedTotal / ledgerTotal) * 1e4) / 1e4 : null,
-    simulated: llm.isSimulated(),
+    simulated: await isOrgSimulated(organizationId),
   };
 }

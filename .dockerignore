@@ -13,8 +13,9 @@ coverage
 .env
 .env.*
 
-# Local tooling and editor state
+# Local tooling and editor state (and generated launch-video output, which can be large)
 .claude
+brag-output*
 .vscode
 .idea
 .DS_Store

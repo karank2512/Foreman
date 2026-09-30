@@ -34,30 +34,41 @@ function MonoList({ names }: { names: string[] }) {
  */
 export function ProvidersSection({ providers, operator }: ProvidersSectionProps) {
   const live = providers.mode === "live";
+  // The demo workspace never spends a key (see isOrgSimulated in @/server/models), so it says so instead of "Live".
+  const demoOnKeys = live && providers.demoWorkspace;
   const keyVars = providers.providers.map((p) => p.envVar).filter((v): v is string => v !== null);
   const tierVars = providers.tiers.map((t) => t.overrideEnvVar).filter((v): v is string => v !== null);
 
   return (
     <div className="space-y-10">
       <SettingsGroup title="Mode">
-        <SettingsRow
-          label={live ? "Workers think with real models" : "Workers think with the built-in simulator"}
-          hint={
-            live
-              ? "At least one provider has a key, so every run costs real money."
-              : "No provider has a key, so answers come from the deterministic simulator. Everything else — runs, deliverables, reviews, costs — works end to end."
-          }
-        >
-          <StatusLine tone={live ? "success" : "idle"}>{live ? "Live" : "Simulated"}</StatusLine>
-        </SettingsRow>
+        {demoOnKeys ? (
+          <SettingsRow
+            label="The demo workspace always uses the built-in simulator"
+            hint="A provider key is set, but the demo never spends it. Create your own workspace to hire workers who think with real models."
+          >
+            <StatusLine tone="idle">Simulated</StatusLine>
+          </SettingsRow>
+        ) : (
+          <SettingsRow
+            label={live ? "Workers think with real models" : "Workers think with the built-in simulator"}
+            hint={
+              live
+                ? "At least one provider has a key, so every run costs real money, billed by that provider."
+                : "No provider has a key, so answers come from the deterministic simulator. Everything else — runs, deliverables, reviews, costs — works end to end."
+            }
+          >
+            <StatusLine tone={live ? "success" : "idle"}>{live ? "Live" : "Simulated"}</StatusLine>
+          </SettingsRow>
+        )}
       </SettingsGroup>
 
       <SettingsGroup
         title="Providers"
         footer={
           live
-            ? "Provider keys are set on the server, not in this workspace. Whoever runs the platform can add or swap one."
-            : "Add a provider key to go live. Keys are set on the server, not in this workspace — ask whoever runs the platform."
+            ? "Provider keys live in the .env file of the server running Foreman, not in this workspace. Whoever runs it can add or swap one there."
+            : "Add a provider key to go live. Keys go in the .env file of the server running Foreman, not in this workspace, and usage is billed to that key."
         }
       >
         {providers.providers.map((provider) => (
@@ -90,9 +101,14 @@ export function ProvidersSection({ providers, operator }: ProvidersSectionProps)
       {operator ? (
         <OperatorNotes>
           <p>
-            Keys are read from the server&apos;s environment at boot: <MonoList names={keyVars} />. Add one and
-            restart to go live; the first available provider serves every tier unless a tier override says
-            otherwise.
+            Keys are read from <Mono>.env</Mono> when Foreman starts: put one of <MonoList names={keyVars} /> in it,
+            then restart (<Mono>docker compose up</Mono>, or <Mono>npm run dev</Mono>). The first available provider
+            serves every tier unless a tier override says otherwise.
+          </p>
+          <p>
+            Check a key before a real run with <Mono>npm run smoke:live</Mono>, or on Docker{" "}
+            <Mono>docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs</Mono>. It makes one tiny call per
+            model the key would serve.
           </p>
           <p>
             Route a single tier with <MonoList names={tierVars} />, for example{" "}

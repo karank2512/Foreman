@@ -39,6 +39,13 @@ describe("buildCsp", () => {
     expect(prod).not.toContain("ws:");
   });
 
+  it("drops only upgrade-insecure-requests for an app served over plain http (the localhost Docker stack)", () => {
+    const http = directives(buildCsp({ nonce, upgradeInsecureRequests: false }));
+    expect(http.has("upgrade-insecure-requests")).toBe(false);
+    expect(http.get("script-src")).toBe(`'self' 'nonce-${nonce}' 'strict-dynamic'`);
+    expect(http.get("connect-src")).toBe("'self'");
+  });
+
   it("refuses a nonce that could break out of the header", () => {
     expect(() => buildCsp({ nonce: "abc" })).toThrow(/nonce/i);
     expect(() => buildCsp({ nonce: "'; script-src *; x='aaaaaaaaaaaaaaaaaaaa" })).toThrow(/nonce/i);

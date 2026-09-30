@@ -31,7 +31,9 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
           </Button>
         </div>
 
-        <p className="mt-5 text-[13px] leading-[18px] text-muted-foreground">No credit card required.</p>
+        <p className="mt-5 text-[13px] leading-[18px] text-muted-foreground">
+          Free and open source. Runs on your own machine, with your own model key or none at all.
+        </p>
       </div>
 
       {/* The frame is the same #f5f5f7 as the band below, so the bleed reads as the page opening into it. */}

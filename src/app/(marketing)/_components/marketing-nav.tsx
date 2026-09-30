@@ -17,7 +17,7 @@ const SECTION_LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#product", label: "Product" },
   { href: "#security", label: "Security" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#open-source", label: "Open source" },
 ] as const;
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';

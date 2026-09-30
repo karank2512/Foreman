@@ -48,8 +48,8 @@ describe("models: pricing", () => {
 
   it("estimateCostUsd follows the tier's CURRENT route", async () => {
     await withModelEnv({ OPENAI_API_KEY: "sk-test" }, () => {
-      expect(llm.estimateCostUsd("fast", 1_000_000, 1_000_000)).toBe(2.25); // gpt-5-mini
-      expect(llm.estimateCostUsd("standard", 1_000_000, 1_000_000)).toBe(11.25); // gpt-5
+      expect(llm.estimateCostUsd("fast", 1_000_000, 1_000_000)).toBe(0.6); // gpt-6-luna
+      expect(llm.estimateCostUsd("standard", 1_000_000, 1_000_000)).toBe(12); // gpt-6.1-sol
     });
     await withModelEnv({ OPENAI_API_KEY: "sk-test", MODEL_TIER_FAST: "openai:some-future-model" }, () => {
       // Unknown override model → priced at the fast tier's reference model.
