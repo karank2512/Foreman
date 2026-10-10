@@ -81,6 +81,7 @@ failing on the first request that needs the missing value. `.env.example` is the
 | `TRUSTED_PROXY_HOPS` | `1` in prod | Number of proxies whose `X-Forwarded-For` entries you trust for rate limiting. |
 | `LOG_LEVEL` / `LOG_FORMAT` | `info` / `json` in prod | |
 | `SERVICE_NAME` | `web` | Set to `worker` on the worker so one log stream is filterable. |
+| `OTEL_ENABLED` | `false` | Worker only. Exports the approval lifecycle as OpenTelemetry traces over OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`, default `http://localhost:4318`). No prompts, inputs, outputs or identities are exported. See [OTEL.md](OTEL.md). |
 | `RETENTION_TRACE_DAYS` | `30` | Model prompts/responses and step payloads are cleared after this (§9). |
 | `RETENTION_EVENTS_DAYS` | `365` | Activity + security events are deleted after this. |
 | `PLATFORM_*` | see `.env.example` | Per-run and per-org spend ceilings. |

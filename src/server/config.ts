@@ -134,6 +134,17 @@ export const config = {
     },
   },
 
+  telemetry: {
+    /** Opt-in OpenTelemetry trace export from the worker (docs/OTEL.md). Off: nothing is loaded, nothing is sent. */
+    get enabled() {
+      return bool(process.env.OTEL_ENABLED);
+    },
+    /** `service.name` on the exported resource. */
+    get serviceName() {
+      return process.env.OTEL_SERVICE_NAME || "foreman-worker";
+    },
+  },
+
   log: {
     get level(): "debug" | "info" | "warn" | "error" {
       const v = process.env.LOG_LEVEL;
