@@ -171,10 +171,10 @@ OTEL_EVIDENCE_DIR=docs/otel-evidence npx vitest run tests/telemetry
 which writes `docs/otel-evidence/approve-path.json` and `deny-path.json` (format: `tests/telemetry/helpers.ts
 toEvidence`).
 
-> **Status of the JSON below:** it is the *expected* output, written from the test assertions, because the
-> environment this change was authored in could not install packages or start Postgres and therefore could not
-> run the suite. Ids are placeholders; repeated collector spans are elided with `…`. Replace it with the captured
-> files once the suite has run.
+> **Status:** the captured traces are in `docs/otel-evidence/approve-path.json` and `deny-path.json`, written by
+> the test suite (Simulated mode, in-memory exporter) and committed as produced. The inline JSON below is an
+> abbreviated, hand-edited excerpt with placeholder ids (`run_01`, `tc_19`, ...) and repeated collector spans
+> elided with `...`; treat the files, not the excerpts, as the evidence.
 
 ### Approve path (Simulated mode)
 
