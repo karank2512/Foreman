@@ -2,6 +2,7 @@ import { recordActivity } from "@/server/activity";
 import { db, toJson } from "@/server/db";
 import { evaluateRun, PROVIDER_SETUP_FAILURE_MARKER, refreshWorkerScore } from "@/server/evaluation";
 import { errorMessage } from "@/server/errors";
+import { checkpointId, telemetry } from "@/server/telemetry";
 import { tools } from "@/server/tools";
 import { parseCheckpoint } from "./checkpoint";
 import { publicRunError, RunCancelled, RunFailure } from "./failure";
@@ -172,6 +173,8 @@ export async function finishFailure(slice: RunSlice, failure: RunFailure): Promi
       error: message,
       checkpoint: toJson(slice.snapshot()),
     });
+    // The restore point the retry will resume from; written by this attempt, so it carries this attempt's number.
+    telemetry.recordCheckpointed(run.id, slice.lock.executorId, checkpointId(run.id, run.attempt, cp.nextStepIndex));
     log.warn(`run ${run.id} failed on attempt ${run.attempt}/${run.maxAttempts}, retrying: ${failure.message}`);
     return { status: "FAILED", error: message, willRetry: true };
   }

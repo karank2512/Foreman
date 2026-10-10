@@ -2,6 +2,7 @@ import { recordActivity } from "@/server/activity";
 import { assertCan } from "@/server/auth/permissions";
 import { db, toJson } from "@/server/db";
 import { conflict, notFound } from "@/server/errors";
+import { telemetry } from "@/server/telemetry";
 import { tools } from "@/server/tools";
 import { transitionRun } from "./transitions";
 import type { DecideApprovalArgs } from "./types";
@@ -36,8 +37,8 @@ const APPROVAL_SELECT = {
 type Outcome =
   | { kind: "missing" }
   /** The run moved on (cancelled, failed, already resumed): the request can never be honoured. */
-  | { kind: "stale"; approvalId: string; stillPending: boolean }
-  | { kind: "decided"; approval: { id: string; title: string; toolName: string; runId: string; workerId: string; run: { jobId: string }; worker: { name: string } } };
+  | { kind: "stale"; approvalId: string; stillPending: boolean; runId: string; toolCallId: string; toolName: string }
+  | { kind: "decided"; approval: { id: string; title: string; toolName: string; toolCallId: string; runId: string; workerId: string; run: { jobId: string }; worker: { name: string } } };
 
 export async function decideApproval(args: DecideApprovalArgs): Promise<void> {
   const { organizationId, approvalId, userId, decision } = args;
@@ -60,7 +61,7 @@ export async function decideApproval(args: DecideApprovalArgs): Promise<void> {
     const approval = await tx.approval.findFirst({ where: { id: approvalId, organizationId }, select: APPROVAL_SELECT });
     if (!approval) return { kind: "missing" };
     if (approval.status !== "PENDING" || approval.run.status !== "WAITING_FOR_APPROVAL") {
-      return { kind: "stale", approvalId: approval.id, stillPending: approval.status === "PENDING" };
+      return { kind: "stale", approvalId: approval.id, stillPending: approval.status === "PENDING", runId: approval.runId, toolCallId: approval.toolCallId, toolName: approval.toolName };
     }
 
     const approved = decision === "approve";
@@ -105,15 +106,29 @@ export async function decideApproval(args: DecideApprovalArgs): Promise<void> {
   if (outcome.kind === "stale") {
     // Retire a request that can no longer be honoured so it stops showing up as pending.
     if (outcome.stillPending) {
-      await db.approval.updateMany({
+      const expired = await db.approval.updateMany({
         where: { id: outcome.approvalId, status: "PENDING" },
         data: { status: "EXPIRED", decidedAt: now, decisionNote: STALE_MESSAGE },
       });
+      if (expired.count > 0) {
+        telemetry.recordToolCallDecision({ runId: outcome.runId, toolCallId: outcome.toolCallId, toolName: outcome.toolName, approvalId: outcome.approvalId, outcome: "expired", source: "system", reason: "stale_decision", at: now });
+      }
     }
     throw conflict(STALE_MESSAGE);
   }
 
   const decided = outcome.approval;
+  // The reviewer appears as a role only; the note and the request title stay in the database.
+  telemetry.recordToolCallDecision({
+    runId: decided.runId,
+    toolCallId: decided.toolCallId,
+    toolName: decided.toolName,
+    approvalId: decided.id,
+    outcome: decision === "approve" ? "allow" : "deny",
+    source: "reviewer",
+    actorRole: user.role,
+    at: now,
+  });
   await recordActivity({
     organizationId,
     type: decision === "approve" ? "APPROVAL_APPROVED" : "APPROVAL_REJECTED",

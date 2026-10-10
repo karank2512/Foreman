@@ -1,5 +1,6 @@
 import { db, toJson, type DbOrTx } from "@/server/db";
 import { resolveSecret } from "@/server/secrets";
+import { checkpointId, telemetry } from "@/server/telemetry";
 import type { ToolContext } from "@/server/tools/types";
 import { runAgentComponent } from "./agent-loop";
 import { cloneContext } from "./checkpoint";
@@ -64,6 +65,7 @@ export class RunSlice {
 
   async saveCheckpoint(tx?: DbOrTx): Promise<void> {
     await this.lock.write({ checkpoint: toJson(this.snapshot()) }, tx);
+    telemetry.recordCheckpointed(this.run.id, this.lock.executorId, checkpointId(this.run.id, this.run.attempt, this.cp.nextStepIndex));
   }
 
   async enforceLimits(extra: { pendingToolCalls?: number } = {}): Promise<void> {

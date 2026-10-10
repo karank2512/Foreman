@@ -17,6 +17,7 @@ src/server/auth/                           Auth.js config, requireSession, passw
 src/middleware.ts, src/app/page.tsx, src/app/(auth)/**, src/app/api/auth/**            [auth]
 src/server/secrets/                        credential vault (AES-256-GCM) + resolve    [platform]
 src/server/activity/, src/server/usage/    activity feed, usage ledger                 [platform]
+src/server/telemetry/                      opt-in OpenTelemetry export of the approval lifecycle (docs/OTEL.md) [platform]
 src/server/models/                         LLM registry, tier router, pricing, providers, mock  [models]
 src/server/simulation/                     deterministic fixtures + mock agent brain   [simulation]
 src/server/tools/                          registry, permission enforcement, MVP tools [tools]
@@ -38,6 +39,7 @@ tests/<area>/*.test.ts                     Vitest suites                        
 - `runtime` calls `evaluation.evaluateRun()` after a successful run. **`runtime` MUST NOT import `@/server/staffing` or `@/server/workers`.** `staffing` may import `runtime` (only `enqueueRun`). `workers` may import anything below it.
 - Server modules other than app code never import the auth index — only `import type { SessionContext } from "@/server/auth/types"`. Tests and the seed import `@/server/auth/password` (no next-auth).
 - `models` → `usage` is allowed (`recordUsage`). `simulation` imports only `domain`, `models/types`, `tools/schemas`.
+- `telemetry` is a leaf beside `log`: it imports only `db`, `config` and `log` (plus `@opentelemetry/api`; the SDK and exporter are loaded dynamically when `OTEL_ENABLED=true`). Only `runtime` and `src/worker.ts` call it. No module may import `@opentelemetry/*` outside `src/server/telemetry/` and `tests/telemetry/`.
 
 ## Frozen domain helpers (use these — do not re-implement)
 - `domain/job-spec.ts`: `JobSpecSchema`, `JobSpecLlmSchema` (what the LLM produces; code adds `schemaVersion`), `ScopingQuestionsSchema`, `IntakeAnswersSchema`, `renderJobBrief(spec)` (the ONLY renderer of the `job_brief` context value).
@@ -116,6 +118,24 @@ export async function getUsageSummary(organizationId: string, range: { from: Dat
 export async function getWorkerCostSummary(organizationId: string, workerId: string, days?: number): Promise<WorkerCostSummary>   // default 30
 ```
 Day bucketing is done in JS on local calendar days (no raw SQL date_trunc).
+
+## telemetry — `@/server/telemetry`  (contract: `telemetry/types.ts`, guide: `docs/OTEL.md`)
+```ts
+export async function initTelemetry(opts?: { enabled?: boolean; serviceName?: string; exporter?: SpanExporter; processor?: "simple" | "batch" }): Promise<{ enabled: boolean }>
+  // worker boot. Default `enabled` = OTEL_ENABLED. Disabled ⇒ returns at once: no SDK loaded, no network. Tests pass an InMemorySpanExporter.
+export async function shutdownTelemetry(): Promise<void>      // ends open slice spans, flushes, unregisters the global provider
+export function isTelemetryEnabled(): boolean
+export function checkpointId(runId: string, attempt: number, stepIndex: number): string   // `${runId}:${attempt}:${stepIndex}` — Foreman's synthetic gen_ai.agent.checkpoint.id
+export const telemetry: {                                      // every hook: no-op when disabled, never throws
+  beginRunSlice(start: RunSliceStart): Promise<void>;          // run.ts, after the claim: opens `invoke_agent`; emits gen_ai.agent.resumed when continuing a pause/checkpoint
+  endRunSlice(runId, executorId, { status }): void;            // run.ts (normal path + finally)
+  recordCheckpointed(runId, executorId, checkpointId): void;   // slice.saveCheckpoint, pauseForApproval, finishFailure retry
+  recordPaused(runId, executorId, { pauseId, approvalCount }): void;      // pauseForApproval; pauseId = first request's Approval id
+  recordToolCallDecision(args: ToolCallDecisionArgs): void;    // pause (require_approval) · decideApproval (allow/deny, actor = role) · stale decision + closeOpenWork (expired) · tools.invoke denied (deny, policy)
+  recordToolInvocation(rec: ToolInvocationRecord): void;       // tool-calls.ts after tools.invoke: `execute_tool <tool>` span only for ok/error outcomes
+}
+```
+Attribute keys are closed: `ALLOWED_ATTRIBUTE_KEYS` in `telemetry/types.ts`; `sanitizeAttributes` drops anything else and clips strings. Never pass tool inputs/outputs, prompts, names, emails or notes to a hook.
 
 ## models — `@/server/models`  (types: `models/types.ts`)
 ```ts

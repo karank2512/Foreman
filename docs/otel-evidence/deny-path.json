@@ -1,0 +1,320 @@
+{
+  "mode": "Simulated",
+  "capturedAt": "2026-10-10T01:10:58.234Z",
+  "spans": [
+    {
+      "name": "execute_tool web_search",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "6c09922483d16a20",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "web_search",
+        "gen_ai.tool.call.id": "cmv1p79kq004krwvtb9536ctx",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool web_search",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "151d6a93e7a79e4d",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "web_search",
+        "gen_ai.tool.call.id": "cmv1p79kr004orwvtjrech9hf",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool fetch_url",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "6e3ff5261c9f1f1b",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "fetch_url",
+        "gen_ai.tool.call.id": "cmv1p79l70052rwvtoscjekcn",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool fetch_url",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "fa6ec398f547da2f",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "fetch_url",
+        "gen_ai.tool.call.id": "cmv1p79l80056rwvtj3orybnb",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool fetch_url",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "276f9d55f1f5f180",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "fetch_url",
+        "gen_ai.tool.call.id": "cmv1p79l8005arwvtgt4v4a2x",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool fetch_url",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "651b0eba298c646e",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "fetch_url",
+        "gen_ai.tool.call.id": "cmv1p79l9005erwvtkqhavzqw",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "execute_tool extract_data",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "59d776cf97939932",
+      "parentSpanId": "82af8cea7a45311c",
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "extract_data",
+        "gen_ai.tool.call.id": "cmv1p79lv005wrwvtyte2igwf",
+        "gen_ai.tool.type": "function",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.run.simulated": true
+      },
+      "events": []
+    },
+    {
+      "name": "invoke_agent",
+      "traceId": "c4ea885d0126e96a794b0b7af7c6d6ff",
+      "spanId": "82af8cea7a45311c",
+      "parentSpanId": null,
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.agent.id": "cmv1p79az0008rwvtvf9z10v9",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.organization.id": "cmv1p79af0000rwvtoxcuix8l",
+        "foreman.run.attempt": 1,
+        "foreman.run.simulated": true,
+        "foreman.run.status": "WAITING_FOR_APPROVAL"
+      },
+      "events": [
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:3"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:3"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:8"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:8"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:10"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:10"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:11"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:12"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:13"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:14"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:15"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:17"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:19"
+          }
+        },
+        {
+          "name": "gen_ai.tool.call.decision",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.tool.name": "send_notification",
+            "gen_ai.tool.call.id": "cmv1p79mx006yrwvthahnctxk",
+            "gen_ai.tool.call.decision.outcome": "require_approval",
+            "foreman.approval.id": "cmv1p79n20070rwvtffreyu5t",
+            "foreman.decision.source": "policy"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:20"
+          }
+        },
+        {
+          "name": "gen_ai.agent.paused",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.pause.id": "cmv1p79n20070rwvtffreyu5t",
+            "foreman.pause.reason": "approval",
+            "foreman.pause.approval_count": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "tool_call_decision",
+      "traceId": "57646ba5ee40dee288e7f9e31e1200f6",
+      "spanId": "baddc703f6952d25",
+      "parentSpanId": null,
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "gen_ai.tool.name": "send_notification",
+        "gen_ai.tool.call.id": "cmv1p79mx006yrwvthahnctxk"
+      },
+      "events": [
+        {
+          "name": "gen_ai.tool.call.decision",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.tool.name": "send_notification",
+            "gen_ai.tool.call.id": "cmv1p79mx006yrwvthahnctxk",
+            "gen_ai.tool.call.decision.outcome": "deny",
+            "foreman.approval.id": "cmv1p79n20070rwvtffreyu5t",
+            "foreman.decision.source": "reviewer",
+            "foreman.decision.actor.role": "OWNER"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invoke_agent",
+      "traceId": "f0d1abc18b39d9f1edfe11abd1755ae2",
+      "spanId": "5cec2b906d1e4b5b",
+      "parentSpanId": null,
+      "status": "UNSET",
+      "attributes": {
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.agent.id": "cmv1p79az0008rwvtvf9z10v9",
+        "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+        "foreman.organization.id": "cmv1p79af0000rwvtoxcuix8l",
+        "foreman.run.attempt": 1,
+        "foreman.run.simulated": true,
+        "foreman.run.status": "SUCCEEDED"
+      },
+      "events": [
+        {
+          "name": "gen_ai.agent.resumed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.resumed_from.type": "pause",
+            "gen_ai.agent.resumed_from.id": "cmv1p79n20070rwvtffreyu5t"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:20"
+          }
+        },
+        {
+          "name": "gen_ai.agent.checkpointed",
+          "attributes": {
+            "gen_ai.agent.execution.id": "cmv1p79kd0046rwvthi0rsk7g",
+            "gen_ai.agent.checkpoint.id": "cmv1p79kd0046rwvthi0rsk7g:1:21"
+          }
+        }
+      ]
+    }
+  ]
+}
