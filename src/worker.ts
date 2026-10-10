@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { assertValidEnv, EnvError } from "@/server/env";
 import { createLogger } from "@/server/log";
 import { startExecutor, stopExecutor } from "@/server/runtime";
+import { initTelemetry, shutdownTelemetry } from "@/server/telemetry";
 
 /**
  * The standalone run executor (`npm run worker`, or `node dist/worker.mjs` in a container).
@@ -47,6 +48,12 @@ async function shutdown(reason: string, code = 0): Promise<void> {
     log.error("worker.stop_failed", { err: e });
     exitCode = EXIT_FATAL;
   }
+  // After the executor: the last slices have ended their spans, so the flush carries them out.
+  try {
+    await shutdownTelemetry();
+  } catch (e) {
+    log.warn("worker.telemetry_shutdown_failed", { err: e });
+  }
   try {
     await db.$disconnect();
   } catch (e) {
@@ -59,7 +66,7 @@ async function shutdown(reason: string, code = 0): Promise<void> {
   process.exit(exitCode);
 }
 
-function main(): void {
+async function main(): Promise<void> {
   try {
     assertValidEnv();
   } catch (e) {
@@ -78,6 +85,15 @@ function main(): void {
 
   keepAlive = setInterval(() => {}, 60_000);
 
+  // Opt-in OpenTelemetry export (OTEL_ENABLED=true, docs/OTEL.md). Before the executor, so the very first slice
+  // is traced; a tracing problem is logged and the worker runs without it rather than not at all.
+  let telemetryEnabled = false;
+  try {
+    telemetryEnabled = (await initTelemetry()).enabled;
+  } catch (e) {
+    log.error("worker.telemetry_failed", { err: e });
+  }
+
   startExecutor();
   log.info("worker.started", {
     version: config.appVersion,
@@ -85,7 +101,8 @@ function main(): void {
     concurrency: config.executor.concurrency,
     pollMs: config.executor.pollMs,
     shutdownGraceMs: config.executor.shutdownGraceMs,
+    telemetry: telemetryEnabled,
   });
 }
 
-main();
+void main();

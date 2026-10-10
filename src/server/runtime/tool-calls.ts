@@ -3,6 +3,7 @@ import { recordActivity } from "@/server/activity";
 import { db, toJson } from "@/server/db";
 import type { AgentComponent } from "@/server/domain/blueprint";
 import type { ChatMessage, ToolCallRequest } from "@/server/models/types";
+import { telemetry } from "@/server/telemetry";
 import { tools } from "@/server/tools";
 import type { InvokeToolResult } from "@/server/tools/types";
 import { DECLINED_MESSAGE } from "./approvals";
@@ -168,6 +169,16 @@ export async function resolvePending(slice: RunSlice, component: AgentComponent,
     // The step's duration is the call's own execution time: a batch runs its calls one after another and an
     // approval-gated call waits for a human between its step being created and the tool actually running.
     const durationMs = "latencyMs" in result ? result.latencyMs : now.getTime() - invokedAt;
+    // Only the outcome kind travels to telemetry — never the input or the output.
+    telemetry.recordToolInvocation({
+      runId: slice.run.id,
+      executorId: slice.lock.executorId,
+      toolCallId: call.toolCallId,
+      toolName: call.toolName,
+      outcome: result.status === "ok" ? { status: "ok", simulated: result.simulated } : result.status === "denied" ? { status: "denied", reason: result.reason } : { status: result.status },
+      startedAt: invokedAt,
+      endedAt: now.getTime(),
+    });
 
     const external = tools.get(call.toolName)?.sideEffect === "external_write";
 

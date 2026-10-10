@@ -4,6 +4,7 @@ import { recordActivity } from "@/server/activity";
 import { db } from "@/server/db";
 import { refreshWorkerScore } from "@/server/evaluation";
 import { conflict, notFound } from "@/server/errors";
+import { telemetry } from "@/server/telemetry";
 import { loadRunBundle } from "./context";
 import { LockLost, publicRunError, RunFailure } from "./failure";
 import { RunLock } from "./lock";
@@ -108,8 +109,24 @@ export async function executeRun(runId: string, opts: { executorId?: string } = 
     const slice = new RunSlice(bundle, lock, nextStepIndex);
     await lock.assertHeld();
     await slice.closeInterruptedWork();
+    // The stored checkpoint (not the recomputed step index) tells telemetry what this slice is resuming from.
+    await telemetry.beginRunSlice({
+      runId,
+      executorId,
+      organizationId: bundle.run.organizationId,
+      workerId: bundle.run.workerId,
+      attempt: bundle.run.attempt,
+      simulated: bundle.run.simulated,
+      checkpoint: {
+        componentIndex: checkpoint.componentIndex,
+        nextStepIndex: checkpoint.nextStepIndex,
+        pendingToolCallIds: checkpoint.agent?.pendingToolCalls.map((p) => p.toolCallId) ?? [],
+      },
+    });
     log.info(`run ${runId} slice started (attempt ${bundle.run.attempt}, component ${checkpoint.componentIndex}, step ${nextStepIndex})`);
-    return await slice.drive();
+    const outcome = await slice.drive();
+    telemetry.endRunSlice(runId, executorId, { status: outcome.status });
+    return outcome;
   } catch (e) {
     if (e instanceof LockLost) {
       // Someone else owns the run now (cancel, recovery, a second executor): report its state, write nothing.
@@ -120,6 +137,8 @@ export async function executeRun(runId: string, opts: { executorId?: string } = 
     }
     throw e;
   } finally {
+    // No-op when the slice already ended its span; closes it when drive() threw (lock lost, unexpected error).
+    telemetry.endRunSlice(runId, executorId, { status: "INTERRUPTED" });
     lock.stop();
   }
 }
