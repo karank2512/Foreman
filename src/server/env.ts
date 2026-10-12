@@ -61,7 +61,7 @@ const EnvSchema = z.object({
   LOG_FORMAT: z.enum(["json", "pretty"]).optional(),
   APP_VERSION: z.string().optional(),
 
-  // OpenTelemetry export (worker only, opt-in; docs/OTEL.md). The endpoint variables are the standard ones the
+  // OpenTelemetry export (worker and web, opt-in; docs/OTEL.md). The endpoint variables are the standard ones the
   // OTLP exporter reads itself; they are validated here so a typo fails at boot instead of silently dropping spans.
   OTEL_ENABLED: bool,
   OTEL_SERVICE_NAME: z.string().optional(),

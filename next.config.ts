@@ -36,14 +36,15 @@ const nextConfig: NextConfig = {
   },
   /**
    * Because the app has middleware, Next also compiles `instrumentation.ts` for the Edge runtime. Its
-   * `import("@/server/runtime")` is guarded by `NEXT_RUNTIME === "nodejs"` and never executes there, but webpack
-   * still follows it and fails on the Node built-ins the tools layer needs (node:net, node:dns, node:http…).
-   * Resolving that one specifier to an empty module in the Edge compiler keeps the guard honest and the build green.
+   * `import("@/server/runtime")` and `import("@/server/telemetry")` are guarded by `NEXT_RUNTIME === "nodejs"`
+   * and never execute there, but webpack still follows them and fails on the Node built-ins they need (node:net,
+   * node:dns, node:http for the tools layer; http, zlib and Prisma for the OTLP exporter and the telemetry hooks).
+   * Resolving those specifiers to an empty module in the Edge compiler keeps the guard honest and the build green.
    * `$` makes it an exact match, so `@/server/runtime/types` (pure types used by client components) still resolves.
    */
   webpack(config, { nextRuntime }) {
     if (nextRuntime === "edge") {
-      config.resolve.alias = { ...config.resolve.alias, "@/server/runtime$": false };
+      config.resolve.alias = { ...config.resolve.alias, "@/server/runtime$": false, "@/server/telemetry$": false };
     }
     return config;
   },

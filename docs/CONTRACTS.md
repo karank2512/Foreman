@@ -39,7 +39,7 @@ tests/<area>/*.test.ts                     Vitest suites                        
 - `runtime` calls `evaluation.evaluateRun()` after a successful run. **`runtime` MUST NOT import `@/server/staffing` or `@/server/workers`.** `staffing` may import `runtime` (only `enqueueRun`). `workers` may import anything below it.
 - Server modules other than app code never import the auth index — only `import type { SessionContext } from "@/server/auth/types"`. Tests and the seed import `@/server/auth/password` (no next-auth).
 - `models` → `usage` is allowed (`recordUsage`). `simulation` imports only `domain`, `models/types`, `tools/schemas`.
-- `telemetry` is a leaf beside `log`: it imports only `db`, `config` and `log` (plus `@opentelemetry/api`; the SDK and exporter are loaded dynamically when `OTEL_ENABLED=true`). Only `runtime` and `src/worker.ts` call it. No module may import `@opentelemetry/*` outside `src/server/telemetry/` and `tests/telemetry/`.
+- `telemetry` is a leaf beside `log`: it imports only `db`, `config` and `log` (plus `@opentelemetry/api`; the SDK and exporter are loaded dynamically when `OTEL_ENABLED=true`). Only `runtime`, `src/worker.ts` and `src/instrumentation.ts` (web boot, behind the nodejs guard) call it. No module may import `@opentelemetry/*` outside `src/server/telemetry/` and `tests/telemetry/`.
 
 ## Frozen domain helpers (use these — do not re-implement)
 - `domain/job-spec.ts`: `JobSpecSchema`, `JobSpecLlmSchema` (what the LLM produces; code adds `schemaVersion`), `ScopingQuestionsSchema`, `IntakeAnswersSchema`, `renderJobBrief(spec)` (the ONLY renderer of the `job_brief` context value).
@@ -122,7 +122,7 @@ Day bucketing is done in JS on local calendar days (no raw SQL date_trunc).
 ## telemetry — `@/server/telemetry`  (contract: `telemetry/types.ts`, guide: `docs/OTEL.md`)
 ```ts
 export async function initTelemetry(opts?: { enabled?: boolean; serviceName?: string; exporter?: SpanExporter; processor?: "simple" | "batch" }): Promise<{ enabled: boolean }>
-  // worker boot. Default `enabled` = OTEL_ENABLED. Disabled ⇒ returns at once: no SDK loaded, no network. Tests pass an InMemorySpanExporter.
+  // worker boot (service foreman-worker) and web boot (foreman-web, processor "simple"). Default `enabled` = OTEL_ENABLED. Disabled ⇒ returns at once: no SDK loaded, no network. Only spans of scope `foreman.runtime` are exported. Tests pass an InMemorySpanExporter.
 export async function shutdownTelemetry(): Promise<void>      // ends open slice spans, flushes, unregisters the global provider
 export function isTelemetryEnabled(): boolean
 export function checkpointId(runId: string, attempt: number, stepIndex: number): string   // `${runId}:${attempt}:${stepIndex}` — Foreman's synthetic gen_ai.agent.checkpoint.id
