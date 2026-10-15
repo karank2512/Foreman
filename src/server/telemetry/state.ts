@@ -22,13 +22,23 @@ export interface RunSpanEntry {
   span: Span;
 }
 
-export const state: {
+interface TelemetryState {
   enabled: boolean;
   tracer: Tracer | null;
   provider: TracerProviderLike | null;
   /** Keyed by `${runId}:${executorId}`. */
   runs: Map<string, RunSpanEntry>;
-} = { enabled: false, tracer: null, provider: null, runs: new Map() };
+}
+
+/**
+ * Kept on globalThis, not in module scope. Next.js compiles `instrumentation.ts` (which calls initTelemetry) and
+ * the server actions that record a reviewer's decision into separate bundles, each with its own copy of this
+ * module. A module-level object would be enabled in one copy and disabled in the other, so the web process would
+ * start the exporter and then never emit anything. One shared object per process avoids that.
+ */
+const STATE_KEY = Symbol.for("foreman.telemetry.state");
+const holder = globalThis as unknown as Record<symbol, TelemetryState | undefined>;
+export const state: TelemetryState = (holder[STATE_KEY] ??= { enabled: false, tracer: null, provider: null, runs: new Map() });
 
 export const runKey = (runId: string, executorId: string): string => `${runId}:${executorId}`;
 
