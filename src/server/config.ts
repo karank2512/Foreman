@@ -135,13 +135,23 @@ export const config = {
   },
 
   telemetry: {
-    /** Opt-in OpenTelemetry trace export from the worker (docs/OTEL.md). Off: nothing is loaded, nothing is sent. */
+    /**
+     * Opt-in OpenTelemetry trace export from the worker and, for reviewer decisions, the web process
+     * (docs/OTEL.md). Off: nothing is loaded, nothing is sent.
+     */
     get enabled() {
       return bool(process.env.OTEL_ENABLED);
     },
-    /** `service.name` on the exported resource. */
+    /** `service.name` on the resource the worker exports. */
     get serviceName() {
       return process.env.OTEL_SERVICE_NAME || "foreman-worker";
+    },
+    /**
+     * `service.name` for the web process. A different default so a collector can tell the reviewer's decision
+     * from the run it decided on; an explicit OTEL_SERVICE_NAME names both processes the same, as the standard says.
+     */
+    get webServiceName() {
+      return process.env.OTEL_SERVICE_NAME || "foreman-web";
     },
   },
 
