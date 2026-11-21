@@ -21,5 +21,7 @@ export { deliverableSummary, narrativeSummary, renderTitle } from "./deliverable
 export { DECLINED_MESSAGE } from "./approvals";
 export { runDeterministic, type ReportMeta } from "./deterministic";
 export { buildInitialMessage, buildSystemPrompt, repairPrompt } from "./messages";
+// How a json-output agent's final answer becomes its output (scripts/bench-cost.ts replays answers the same way).
+export { parseJsonAnswer, type ParsedJson } from "./json";
 
 export * from "./types";
