@@ -110,7 +110,7 @@ const GROUP_TITLES: Record<CategoryGroup, (n: number) => string> = {
   risk_compliance: (n) => `Compliance, fraud and insurance: ${n} fintechs that closed rounds this quarter`,
 };
 
-const ROUNDUP_SIZE = 12;
+export const ROUNDUP_SIZE = 12;
 
 /**
  * Two complementary sets, so each company is in exactly one chronological roundup and one thematic roundup:
@@ -147,6 +147,29 @@ export function buildRoundups(companies: readonly CompanyEntity[], sector: Secto
     });
   }
   return out;
+}
+
+const SECTOR_NOUN: Record<Sector, string> = { ai_infrastructure: "AI infrastructure", fintech: "fintech" };
+
+/**
+ * The newsroom's "full list": a sector's long tail (fixtures/long-tail.ts), newest first, in parts of the roundup
+ * size. Reached only through a "full list" search, never linked from the standard pages.
+ */
+export function buildFullList(longTail: readonly CompanyEntity[], sector: Sector): Roundup[] {
+  const byRecency = longTail.slice().sort((a, b) => a.daysAgo - b.daysAgo);
+  const parts = Math.ceil(byRecency.length / ROUNDUP_SIZE);
+  return Array.from({ length: parts }, (_, k) => {
+    const members = byRecency.slice(k * ROUNDUP_SIZE, (k + 1) * ROUNDUP_SIZE);
+    const id = `${CHRONO_ID[sector].replace(/-raises$/, "")}-full-list-${k + 1}`;
+    return {
+      id,
+      url: urls.roundup(id),
+      title: `${SECTOR_NOUN[sector]} funding, the full list (part ${k + 1} of ${parts}): ${members.length} more rounds`,
+      intro: `Not every round makes our roundups. Part ${k + 1} of ${parts} of the full list: ${members.length} more ${SECTOR_NOUN[sector]} rounds our newsroom logged, newest first.`,
+      members,
+      publishedDaysAgo: Math.min(...members.map((m) => m.daysAgo)),
+    };
+  });
 }
 
 export function isFeedbackCategory(value: string): boolean {

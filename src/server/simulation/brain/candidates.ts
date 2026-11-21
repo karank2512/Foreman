@@ -61,7 +61,8 @@ export function structuredRows(convo: Conversation): Row[] {
   return [...convo.succeeded("read_dataset"), ...convo.succeeded("extract_data")].flatMap((ex) => recordsOf(ex.output));
 }
 
-export function gatherCandidates(convo: Conversation, kind: EntityKind, index: EntityIndex): EntityRef[] {
+/** `upTo` limits the reading to the first exchanges of the conversation (what the worker knew at that point). */
+export function gatherCandidates(convo: Conversation, kind: EntityKind, index: EntityIndex, upTo = convo.state.exchanges.length): EntityRef[] {
   const seen = new Set<string>();
   const out: EntityRef[] = [];
   const push = (ref: EntityRef | null) => {
@@ -69,7 +70,7 @@ export function gatherCandidates(convo: Conversation, kind: EntityKind, index: E
     seen.add(ref.key);
     out.push(ref);
   };
-  for (const ex of convo.state.exchanges) {
+  for (const ex of convo.state.exchanges.slice(0, upTo)) {
     if (!ex.answered || ex.isError) continue;
     if (ex.name === "read_dataset" || ex.name === "extract_data") {
       for (const row of recordsOf(ex.output)) push(index.identify(row));
@@ -124,9 +125,8 @@ function focusScore(ref: EntityRef, terms: readonly string[]): number {
 function specRelevance(ctx: JobContext, kind: EntityKind, index: EntityIndex): (ref: EntityRef) => number {
   if (kind === "company") {
     const score = companyRelevance(ctx.relevanceQuery);
-    const bySlug = new Map(index.companies.map((c) => [c.company.toLowerCase(), c]));
     return (ref) => {
-      const c = bySlug.get(ref.key);
+      const c = index.companyByKey(ref.key);
       return c ? score(c) : 0;
     };
   }
@@ -153,9 +153,8 @@ export function withinBrief(refs: readonly EntityRef[], ctx: JobContext, kind: E
     return [...refs];
   }
   if (kind !== "company" || !hasConstraints(ctx.constraints)) return [...refs];
-  const bySlug = new Map(index.companies.map((c) => [c.company.toLowerCase(), c]));
   return refs.filter((ref) => {
-    const c = bySlug.get(ref.key);
+    const c = index.companyByKey(ref.key);
     return !c || constraintMisses({ stage: c.stage, location: c.hq, sector: c.sector }, ctx.constraints).length === 0;
   });
 }

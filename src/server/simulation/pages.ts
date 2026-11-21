@@ -5,6 +5,7 @@ import {
   FINANCE_HOST,
   NEWS_HOST,
   REVIEWS_HOST,
+  buildFullList,
   buildRoundups,
   groupFromSlug,
   isFeedbackCategory,
@@ -19,6 +20,7 @@ import { financePage } from "./finance-web";
 import { CATEGORY_GROUPS, companyEntities, SECTOR_OF_GROUP, type CategoryGroup, type CompanyEntity } from "./fixtures/companies";
 import { feedbackItems } from "./fixtures/feedback";
 import { allCompanyEntities, fintechEntities, sectorEntities } from "./fixtures/fintech";
+import { allLongTailEntities, longTailEntities } from "./fixtures/long-tail";
 import { companyPeople, investorPartner } from "./fixtures/people";
 import { describePlanPrice, pricingFor } from "./fixtures/pricing";
 import { genericPage } from "./pages-generic";
@@ -272,14 +274,20 @@ export function fetchPage(url: string, now: Date): SimPage {
   if (!parsed) return genericPage(url, now);
   const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
   const segments = parsed.pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
-  const companies = allCompanyEntities(now);
+  // The long tail's own pages (articles, full-list parts, company sites) exist too; nothing else links to them.
+  const companies = [...allCompanyEntities(now), ...allLongTailEntities(now)];
 
   if (host === NEWS_HOST && segments[0] === "funding") {
     const company = companies.find((c) => c.slug === segments[1]);
     if (company) return articlePage(company);
   }
   if (host === NEWS_HOST && segments[0] === "roundups") {
-    const roundup = [...buildRoundups(companyEntities(now)), ...buildRoundups(fintechEntities(now), "fintech")].find((r) => r.id === segments[1]);
+    const roundup = [
+      ...buildRoundups(companyEntities(now)),
+      ...buildRoundups(fintechEntities(now), "fintech"),
+      ...buildFullList(longTailEntities("ai_infrastructure", now), "ai_infrastructure"),
+      ...buildFullList(longTailEntities("fintech", now), "fintech"),
+    ].find((r) => r.id === segments[1]);
     if (roundup) return roundupPage(roundup);
   }
   if (host === COMPARE_HOST && segments[0] === "pricing") {
