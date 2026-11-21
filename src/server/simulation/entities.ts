@@ -4,6 +4,7 @@ import { type CompanyEntity } from "./fixtures/companies";
 import { FEEDBACK_ACTIONS, feedbackItems, type FeedbackCategory } from "./fixtures/feedback";
 import { expenseItems, type SimExpense } from "./fixtures/finance";
 import { allCompanyEntities } from "./fixtures/fintech";
+import { allLongTailEntities } from "./fixtures/long-tail";
 import { companyPeople } from "./fixtures/people";
 import { pricingFor, type PricingPlan } from "./fixtures/pricing";
 import { TICKET_ROUTING, ticketItems, type SimTicket, type TicketCategory } from "./fixtures/tickets";
@@ -211,23 +212,36 @@ export function mentionedIds(text: string, pattern: RegExp): string[] {
 
 /** Everything the simulation "knows", resolved against one clock reading. Build once per call. */
 export class EntityIndex {
-  /** Every simulated company, whatever its sector — mentions and records resolve against all of them. */
+  /** Every hand-written simulated company, whatever its sector — the universe a brief is about. */
   readonly companies: CompanyEntity[];
+  /**
+   * Plus the long tail (fixtures/long-tail.ts): mentions and records resolve against all of these, but nothing picks
+   * from the long tail unprompted — a worker has to have read about a long-tail company to report it.
+   */
+  private readonly known: CompanyEntity[];
   readonly feedback: SimFeedbackItem[];
   readonly tickets: SimTicket[];
   readonly expenses: SimExpense[];
   /** Vendors the spec names, in the customer's spelling (used for display names of synthetic vendors). */
   readonly vendorNames: readonly string[];
   private readonly byKey = new Map<string, EntityRef>();
+  private readonly byName = new Map<string, CompanyEntity>();
   /** Synthetic vendors seen so far, by slug. */
   private readonly vendors = new Map<string, SyntheticVendor>();
 
   constructor(now: Date, opts: { vendorNames?: readonly string[] } = {}) {
     this.companies = allCompanyEntities(now);
+    this.known = [...this.companies, ...allLongTailEntities(now)];
     this.feedback = feedbackItems(now);
     this.tickets = ticketItems(now);
     this.expenses = expenseItems(now);
     this.vendorNames = opts.vendorNames ?? [];
+  }
+
+  /** The company (hand-written or long tail) behind a company ref's key. */
+  companyByKey(key: string): CompanyEntity | undefined {
+    if (this.byName.size === 0) for (const c of this.known) if (!this.byName.has(c.company.toLowerCase())) this.byName.set(c.company.toLowerCase(), c);
+    return this.byName.get(key);
   }
 
   /** The companies of one universe, newest round first. */
@@ -272,7 +286,7 @@ export class EntityIndex {
   /** One facts object per published plan (company × plan rows), or null for entities without a price list. */
   planFactsFor(ref: EntityRef): Facts[] | null {
     if (ref.kind !== "company") return null;
-    const company = this.companies.find((c) => c.company.toLowerCase() === ref.key);
+    const company = this.known.find((c) => c.company.toLowerCase() === ref.key);
     if (company) return pricingFor(company).plans.map((plan) => planFacts(company, plan));
     const v = [...this.vendors.values()].find((x) => x.company.toLowerCase() === ref.key);
     return v ? v.pricing.plans.map((plan) => vendorPlanFacts(v, plan)) : null;
@@ -282,7 +296,7 @@ export class EntityIndex {
   mentioned(text: string, kind: EntityKind): EntityRef[] {
     if (kind === "company") {
       const lower = text.toLowerCase();
-      const hits: Array<Mention<EntityRef>> = companyMentions(text, this.companies).map((h) => ({ item: this.companyRef(h.item), at: h.at }));
+      const hits: Array<Mention<EntityRef>> = companyMentions(text, this.known).map((h) => ({ item: this.companyRef(h.item), at: h.at }));
       // Named vendors outside the fixtures are recognised by their (simulated) pricing page URL.
       for (const slug of mentionedVendorSlugs(text)) hits.push({ item: this.vendorRef(this.vendor(slug, text)), at: lower.indexOf(`${slug}.example/pricing`) });
       return hits.sort((a, b) => a.at - b.at).map((h) => h.item);
@@ -306,7 +320,7 @@ export class EntityIndex {
     }
     for (const s of strings) {
       const name = s.trim().toLowerCase();
-      const hit = this.companies.find((c) => c.company.toLowerCase() === name);
+      const hit = this.known.find((c) => c.company.toLowerCase() === name);
       if (hit) return this.companyRef(hit);
     }
     // A synthetic vendor only when it is already known (seen on the web or named in the spec) — never invented here.

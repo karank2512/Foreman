@@ -51,3 +51,6 @@ next-env.d.ts
 
 # generated launch-video output
 brag-output*/
+
+# scripts/bench-cost.ts report output (default --out ./bench-cost-report)
+bench-cost-report*

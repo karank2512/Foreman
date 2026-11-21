@@ -1,11 +1,12 @@
 import type { SimSearchResult } from "@/server/simulation/types";
-import { COMPARE_HOST, DIRECTORY_HOST, GROUPS, NEWS_HOST, REVIEWS_HOST, buildRoundups, urls, type Roundup } from "./catalog";
+import { COMPARE_HOST, DIRECTORY_HOST, GROUPS, NEWS_HOST, REVIEWS_HOST, buildFullList, buildRoundups, urls, type Roundup } from "./catalog";
 import { constraintMisses, countryOfLocation, parseConstraints, regionOfCountry, type JobConstraints, type Sector } from "./constraints";
 import { isoDaysAgo, isoNoon } from "./dates";
 import { CATEGORY_GROUPS, type CategoryGroup, type CompanyEntity } from "./fixtures/companies";
 import { FEEDBACK_CATEGORIES, feedbackItems } from "./fixtures/feedback";
 import { financeResults, FINANCE_TERMS } from "./finance-web";
 import { allCompanyEntities, sectorEntities } from "./fixtures/fintech";
+import { longTailEntities } from "./fixtures/long-tail";
 import { pricingFor } from "./fixtures/pricing";
 import { hashSeed, seededInt, seededShuffle } from "./rng";
 import { clip, formatUsdShort, keywords, sentenceCase, slugify, stem, titleCase, tokenize } from "./text";
@@ -258,6 +259,19 @@ function companyResults(query: string, limit: number, now: Date): SimSearchResul
   return out;
 }
 
+/**
+ * "… full list of rounds": the parts of the sector's full list (its long tail), in order. The mock collector asks for
+ * it when its first read falls short (brain/collector.ts); "of" never survives the stopwords of a job's own queries.
+ */
+const FULL_LIST = /\bfull list of rounds\b/i;
+
+function fullListResults(query: string, limit: number, now: Date): SimSearchResult[] {
+  const sector = parseConstraints(query).sector ?? "ai_infrastructure";
+  return buildFullList(longTailEntities(sector, now), sector)
+    .slice(0, limit)
+    .map((r) => roundupResult(r, now));
+}
+
 function pricingResults(query: string, limit: number, now: Date): SimSearchResult[] {
   const companies = sectorEntities(parseConstraints(query).sector, now);
   const ranked = rankCompanies(query, companies);
@@ -337,7 +351,7 @@ export function search(query: string, opts: { maxResults?: number } | undefined,
   const requested = opts?.maxResults;
   const limit = Math.min(MAX_RESULTS, Math.max(1, Math.floor(Number.isFinite(requested) ? (requested as number) : DEFAULT_RESULTS)));
   const route = routeQuery(query);
-  if (route === "companies") return companyResults(query, limit, now);
+  if (route === "companies") return FULL_LIST.test(query) ? fullListResults(query, limit, now) : companyResults(query, limit, now);
   if (route === "pricing") return pricingResults(query, limit, now);
   if (route === "feedback") return feedbackResults(query, limit, now);
   if (route === "finance") return financeResults(query, limit, now);
