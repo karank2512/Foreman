@@ -140,7 +140,9 @@ The Docker quick start is set up for one person on their own machine. Before any
 
 **Where does my data go?** Into the Postgres database on your machine. The only outbound traffic is what your workers do: calls to the model provider whose key you set, Tavily searches if you set that key, and pages the workers fetch through a guarded fetcher that blocks private network ranges. Foreman has no telemetry of its own. The Docker image also turns off Next.js telemetry; on the Node path, run `npx next telemetry disable` if you want the same.
 
-**Does it send email or post to Slack?** Not yet. `send_notification` and `read_dataset` are simulated by design, and sent reports land in an outbox. There is no email provider either, so invitation links are copied and shared by hand and there is no self-service password reset.
+**Does it send email or post to Slack?** Not yet. `send_notification` and `read_dataset` are simulated by design, and sent reports land in an outbox. There is no email provider either, so invitation and password-reset links are copied and shared by hand.
+
+**Someone forgot their password.** A workspace owner opens *Settings → Members* and clicks **Reset password** next to them. That signs them out and makes a one-time link, valid for a day, to pass on. Owners can't make links for other owners. If you're an owner and you're the one locked out, run `npm run user:reset-link -- you@example.com` on the machine running Foreman (Docker: `docker compose run --rm --no-deps web node dist/reset-password-link.cjs you@example.com`) and open the link it prints.
 
 **How do I reset everything?**
 - Docker: `docker compose down -v` removes the database *and* the generated secrets. The next `docker compose up` starts clean.
@@ -160,6 +162,7 @@ The Docker quick start is set up for one person on their own machine. Before any
 | `npm run db:deploy` | Apply migrations |
 | `npm run db:seed:demo` | Rebuild the demo workspace (refused in production unless `ALLOW_DEMO_SEED=true`) |
 | `npm run build` · `npm run build:worker` | Production web build · bundled worker |
+| `npm run user:reset-link -- <email>` | Prints a one-time password-reset link for that account and signs it out everywhere (for a locked-out owner) |
 | `npm run smoke:live` | Checks your keys: one tiny real call per model they would serve (Docker: `docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs`) |
 | `npm run audit:prod` | Audit production dependencies |
 

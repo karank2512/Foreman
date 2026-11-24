@@ -120,6 +120,7 @@ export { hashPassword, verifyPassword } from "./password";
 export {
   DEFAULT_SIGNED_IN_PATH,
   INVITE_PATH,
+  RESET_PASSWORD_PATH,
   SESSION_EXPIRED_PARAM,
   SIGN_IN_PATH,
   SIGN_UP_PATH,

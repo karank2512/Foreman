@@ -201,6 +201,7 @@ docker compose logs -f web worker        # what the app and the worker are doing
 docker compose logs setup db             # why the one-shot setup (secrets, migrations, demo seed) failed
 docker compose up -d                     # after editing .env: recreates the containers with the new values
 docker compose run --rm --no-deps --entrypoint node web dist/smoke-live.cjs   # check your provider key(s)
+docker compose run --rm --no-deps web node dist/reset-password-link.cjs you@example.com   # locked out? one-time reset link
 git pull && docker compose up --build    # update to the latest version (migrations run in `setup`)
 docker compose down                      # stop; your data stays in the volumes
 docker compose down -v                   # stop and DELETE the database and the generated secrets
@@ -408,7 +409,8 @@ If you do run a public demo: understand that the password is known, keep it in i
 Full procedures are in [`docs/SECURITY.md`](./SECURITY.md). In short:
 
 - **`AUTH_SECRET`** — put the old value in `AUTH_SECRET_PREVIOUS`, deploy, wait out the session lifetime, then
-  drop the previous value. Rotating without the overlap signs every user out.
+  drop the previous value. Rotating without the overlap signs every user out. Outstanding password-reset links
+  are signed with the current value only, so any rotation invalidates them; make fresh ones afterwards.
 - **`CREDENTIAL_ENCRYPTION_KEY`** — put the old value in `CREDENTIAL_ENCRYPTION_KEY_PREVIOUS` so existing rows
   stay readable while new writes use the new key. Rotating *without* the previous value makes every stored
   customer credential permanently unreadable; they would have to be re-entered by hand.

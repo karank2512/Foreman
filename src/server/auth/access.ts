@@ -6,6 +6,8 @@
 export const SIGN_IN_PATH = "/sign-in";
 export const SIGN_UP_PATH = "/sign-up";
 export const INVITE_PATH = "/invite";
+/** One-time password-reset links an owner or the server operator hands out (see `@/server/account`). */
+export const RESET_PASSWORD_PATH = "/reset-password";
 export const DEFAULT_SIGNED_IN_PATH = "/workforce";
 
 /**
@@ -27,7 +29,7 @@ const METADATA_IMAGE_PATHS = ["/opengraph-image", "/twitter-image", "/icon", "/a
 
 /**
  * Reachable without a session. `/` is the landing page, the two account-creation flows have to work for
- * people who have no account yet, the ops probes must answer a load balancer that never carries a cookie,
+ * people who have no account yet, a password-reset link has to work for someone who cannot sign in, the ops probes must answer a load balancer that never carries a cookie,
  * and the metadata images must answer link-preview crawlers.
  *
  * `/api/auth/*` is handled separately below: Auth.js' own endpoints are always allowed, signed in or not.
@@ -36,6 +38,7 @@ export const PUBLIC_PATHS = [
   "/",
   SIGN_UP_PATH,
   INVITE_PATH,
+  RESET_PASSWORD_PATH,
   "/api/health",
   "/api/ready",
   ...METADATA_IMAGE_PATHS,
@@ -103,8 +106,8 @@ export function safeCallbackUrl(raw: unknown): string {
   // Control characters (tabs/newlines) are stripped by URL parsers and can turn "/\t/host" into "//host".
   if (hasControlCharacters(raw)) return DEFAULT_SIGNED_IN_PATH;
   const pathname = raw.split(/[?#]/, 1)[0] ?? "";
-  // Bouncing a freshly signed-in user back to /sign-in, /sign-up or an invite link is never what they wanted.
-  const rejected = ["/", SIGN_IN_PATH, SIGN_UP_PATH, INVITE_PATH, "/api"];
+  // Bouncing a freshly signed-in user back to /sign-in, /sign-up, an invite or a reset link is never what they wanted.
+  const rejected = ["/", SIGN_IN_PATH, SIGN_UP_PATH, INVITE_PATH, RESET_PASSWORD_PATH, "/api"];
   if (rejected.some((base) => isUnder(pathname, base))) return DEFAULT_SIGNED_IN_PATH;
   return raw;
 }

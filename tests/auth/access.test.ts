@@ -32,8 +32,8 @@ describe("decideAccess — signed out", () => {
     expect(decideAccess(request({ pathname: "/workforce" }))).toEqual({ kind: "redirect", to: "/sign-in" });
   });
 
-  it("lets the public pages through: the landing page, sign-up, invite links and the ops probes", () => {
-    for (const pathname of ["/", "/sign-up", "/invite/abc123", "/api/health", "/api/ready"]) {
+  it("lets the public pages through: the landing page, sign-up, invite and reset links and the ops probes", () => {
+    for (const pathname of ["/", "/sign-up", "/invite/abc123", "/reset-password/abc.123.def", "/api/health", "/api/ready"]) {
       expect(decideAccess(request({ pathname }))).toEqual({ kind: "allow" });
     }
     expect(decideAccess(request({ pathname: "/sign-up", method: "POST" }))).toEqual({ kind: "allow" });
@@ -159,6 +159,7 @@ describe("safeCallbackUrl", () => {
     ["the sign-in page itself", "/sign-in?callbackUrl=%2Fsign-in"],
     ["the sign-up page", "/sign-up"],
     ["an invite link", "/invite/abc123"],
+    ["a password-reset link", "/reset-password/abc.123.def"],
     ["an API route", "/api/runs/run_1"],
     ["empty string", ""],
     ["an absurdly long value", `/${"a".repeat(3000)}`],

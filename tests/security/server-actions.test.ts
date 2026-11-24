@@ -16,8 +16,14 @@ import { describe, expect, it } from "vitest";
 
 const APP_DIR = path.resolve(import.meta.dirname, "../../src/app");
 
-/** Sign-in, sign-up and invite acceptance are reachable before a session exists — that is their job. */
-const PUBLIC_ACTIONS = new Set(["signInAction", "signUpAction", "acceptInviteAction", "acceptInvitationAction"]);
+/** Sign-in, sign-up, invite acceptance and password-reset links are reachable before a session exists — that is their job. */
+const PUBLIC_ACTIONS = new Set([
+  "signInAction",
+  "signUpAction",
+  "acceptInviteAction",
+  "acceptInvitationAction",
+  "resetPasswordAction",
+]);
 /** Sign-out is safe for an anonymous caller: it clears a cookie and redirects. */
 const NO_SESSION_NEEDED = new Set(["signOutAction"]);
 

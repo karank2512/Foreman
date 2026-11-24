@@ -32,6 +32,7 @@ const stubs = {
   "src/app/(app)/settings/account-actions": {
     changeMemberRoleAction: inert,
     changePasswordAction: inert,
+    createPasswordResetLinkAction: inert,
     inviteMemberAction: inert,
     removeMemberAction: inert,
     revokeInvitationAction: inert,
@@ -98,7 +99,18 @@ describe("settings › copy speaks to the workspace owner, not the operator (des
     expect(owner).not.toContain("courtesy");
 
     const member = render(h(members.MembersSection, { members: team, invitations: [], currentUserId: "user_2", canInvite: false, canManage: false }));
-    expect(member).toContain("Only the workspace owner can change roles or remove people.");
+    expect(member).toContain("Only the workspace owner can change roles, remove people or make password reset links.");
+  });
+
+  it("members: an owner can make a reset link for an admin or member, never for an owner, and nobody else sees it", () => {
+    const coOwner: MemberView = { id: "user_3", name: "Cy Owner", email: "cy@example.test", role: "OWNER", lastSignInAt: null, disabled: false, createdAt: "2026-09-03T00:00:00.000Z" };
+    const owner = render(h(members.MembersSection, { members: [...team, coOwner], invitations: [], currentUserId: "user_1", canInvite: true, canManage: true }));
+    // Ada is the only teammate who is not an owner, so exactly one button.
+    expect(owner.match(/Reset password/g)).toHaveLength(1);
+    expect(owner).toContain("Someone who forgot their password? Make them a reset link.");
+
+    const member = render(h(members.MembersSection, { members: team, invitations: [], currentUserId: "user_2", canInvite: false, canManage: false }));
+    expect(member).not.toContain("Reset password");
   });
 
   const tiers = (["fast", "standard", "reasoning"] as const).map((tier) => ({
@@ -230,6 +242,37 @@ describe("settings › security: recent activity folds repeats and hides address
     // The row carries the newest event of its group.
     expect(rows[0]).toMatchObject({ id: "evt_0", latestAt: at(0) });
     expect(rows[2]).toMatchObject({ id: "evt_13", latestAt: at(13) });
+  });
+
+  it("collapseActivity reads password-reset links from the metadata and never folds them into plain events", () => {
+    const withMeta = (e: SecurityEventView, metadata: Record<string, unknown>): SecurityEventView => ({ ...e, metadata });
+    const stream = [
+      withMeta(event(0, "PASSWORD_CHANGED", null, "user_2"), { method: "reset_link" }),
+      event(1, "PASSWORD_CHANGED", null, "user_2"),
+      withMeta(event(2, "SESSIONS_REVOKED", null), { reason: "password_reset_link_issued", via: "settings" }),
+      event(3, "SESSIONS_REVOKED", null),
+      withMeta(event(4, "SESSIONS_REVOKED", null, "user_2"), { reason: "password_reset_link_issued", via: "operator" }),
+    ];
+    expect(collapseActivity(stream).map((r) => [r.type, r.variant])).toEqual([
+      ["PASSWORD_CHANGED", "reset_link_used"],
+      ["PASSWORD_CHANGED", null],
+      ["SESSIONS_REVOKED", "reset_link_issued"],
+      ["SESSIONS_REVOKED", null],
+      ["SESSIONS_REVOKED", "reset_link_issued_by_operator"],
+    ]);
+
+    const html = render(
+      h(security.SecuritySection, {
+        user: { name: "Dana Owner", email: "dana@example.test", organizationName: "Acme" },
+        passwordMinLength: 12,
+        events: stream,
+        names: { user_1: "Dana Owner", user_2: "Ada Member" },
+        scopedToYou: false,
+      }),
+    );
+    expect(html).toContain("set a new password from a reset link");
+    expect(html).toContain("was signed out and given a password reset link by an owner");
+    expect(html).toContain("was signed out and given a password reset link by whoever runs this server");
   });
 
   it("collapseActivity stops at the row limit but still folds repeats into the last row", () => {

@@ -1,16 +1,18 @@
 "use server";
 
 import { unstable_rethrow } from "next/navigation";
-import { acceptInvitation, signUp } from "@/server/account";
+import { acceptInvitation, resetPasswordWithToken, signUp } from "@/server/account";
 import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH, getSession, safeCallbackUrl, signIn, signOut } from "@/server/auth";
 import { isAppError } from "@/server/errors";
 import { recordSecurityEvent, requestContext } from "@/server/security";
 import {
   ACCEPT_INVITE_MESSAGES,
+  RESET_PASSWORD_MESSAGES,
   SIGN_IN_MESSAGES,
   SIGN_UP_MESSAGES,
   signInErrorMessage,
   type AcceptInviteState,
+  type ResetPasswordState,
   type SignInState,
   type SignUpState,
 } from "./schema";
@@ -113,6 +115,38 @@ export async function acceptInviteAction(_prev: AcceptInviteState, formData: For
   } catch (e) {
     unstable_rethrow(e);
     console.error("[auth] sign-in after invite acceptance failed", e);
+    return { error: SIGN_IN_MESSAGES.unexpected };
+  }
+
+  return { error: null };
+}
+
+/**
+ * Set a new password from a one-time reset link, then sign in with it. The link names the account, so the
+ * form only carries the token and the new password.
+ */
+export async function resetPasswordAction(_prev: ResetPasswordState, formData: FormData): Promise<ResetPasswordState> {
+  const token = field(formData, "token");
+  const password = field(formData, "password");
+  if (!token) return { error: RESET_PASSWORD_MESSAGES.invalidLink };
+  if (!password) return { error: RESET_PASSWORD_MESSAGES.missingFields };
+
+  let email: string;
+  try {
+    const ctx = await requestContext();
+    ({ email } = await resetPasswordWithToken(token, { password }, { ip: ctx.ip, userAgent: ctx.userAgent }));
+  } catch (e) {
+    unstable_rethrow(e);
+    if (isAppError(e)) return { error: e.message };
+    console.error("[auth] password reset failed", e);
+    return { error: RESET_PASSWORD_MESSAGES.unexpected };
+  }
+
+  try {
+    await signIn("credentials", { email, password, redirectTo: DEFAULT_SIGNED_IN_PATH });
+  } catch (e) {
+    unstable_rethrow(e);
+    console.error("[auth] sign-in after password reset failed", e);
     return { error: SIGN_IN_MESSAGES.unexpected };
   }
 

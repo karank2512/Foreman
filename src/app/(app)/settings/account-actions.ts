@@ -6,6 +6,7 @@ import {
   changeMemberRole,
   changePassword,
   createInvitation,
+  createPasswordResetLink,
   removeMember,
   revokeInvitation,
   signOutEverywhere,
@@ -74,6 +75,18 @@ export async function removeMemberAction(userId: string): Promise<ActionResult> 
     const s = await requireSession();
     await removeMember(s, userId);
     revalidatePath("/settings");
+  });
+}
+
+/** A one-time link for the owner to pass on by hand; making it signs the member out everywhere. */
+export async function createPasswordResetLinkAction(
+  userId: string,
+): Promise<ActionResult<{ resetUrl: string; expiresAt: string }>> {
+  return runAction(async () => {
+    const s = await requireSession();
+    const link = await createPasswordResetLink(s, userId);
+    revalidatePath("/settings");
+    return link;
   });
 }
 

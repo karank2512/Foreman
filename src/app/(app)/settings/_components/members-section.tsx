@@ -3,6 +3,7 @@ import { formatDate } from "@/lib/format";
 import type { InvitationView, MemberView } from "@/server/account";
 import { SettingsGroup, SettingsRow, SettingsValue, StatusLine } from "./settings-list";
 import { InviteForm, MemberMenu, RevokeInviteButton } from "./member-controls";
+import { PasswordResetButton } from "./password-reset-control";
 
 export const ROLE_LABEL = { OWNER: "Owner", ADMIN: "Admin", MEMBER: "Member" } as const;
 
@@ -46,8 +47,8 @@ export function MembersSection({ members, invitations, currentUserId, canInvite,
         description="Who's on the team, and what each of them can do here."
         footer={
           canManage
-            ? "A workspace always keeps at least one owner. Removing someone keeps their runs and reviews on file, but signs them out everywhere."
-            : "Only the workspace owner can change roles or remove people."
+            ? "A workspace always keeps at least one owner. Removing someone keeps their runs and reviews on file, but signs them out everywhere. Someone who forgot their password? Make them a reset link."
+            : "Only the workspace owner can change roles, remove people or make password reset links."
         }
       >
         {active.map((member) => {
@@ -78,7 +79,10 @@ export function MembersSection({ members, invitations, currentUserId, canInvite,
             >
               <SettingsValue>{ROLE_LABEL[member.role]}</SettingsValue>
               {canManage && !you ? (
-                <MemberMenu userId={member.id} name={member.name} role={member.role} />
+                <>
+                  <MemberMenu userId={member.id} name={member.name} role={member.role} />
+                  {member.role === "OWNER" ? null : <PasswordResetButton userId={member.id} name={member.name} />}
+                </>
               ) : null}
             </SettingsRow>
           );
