@@ -68,10 +68,12 @@ async function verify(token: string, now: Date) {
       sessionVersion: true,
       disabledAt: true,
       organizationId: true,
-      organization: { select: { name: true, suspendedAt: true } },
+      organization: { select: { name: true, suspendedAt: true, isDemo: true } },
     },
   });
   if (!user || user.disabledAt || user.organization.suspendedAt) return null;
+  // The demo workspace refuses sign-in unless DEMO_MODE is on, so a reset there would set a password nobody can use.
+  if (user.organization.isDemo && !config.auth.demoMode) return null;
 
   const expected = signature(user.id, expiresAtSec, user.sessionVersion);
   const given = Buffer.from(sigRaw, "base64url");
@@ -96,22 +98,27 @@ async function issue(
   const { token, expiresAt } = mint(target.id, updated.sessionVersion, now);
 
   const ctx = audit.via === "settings" ? await requestContext() : { ip: undefined, userAgent: null };
+  // Recorded against the person whose sessions ended, so it shows in their own trail too; who asked is metadata.
   await recordSecurityEvent({
     type: "SESSIONS_REVOKED",
     organizationId: target.organizationId,
-    userId: audit.actorUserId ?? target.id,
+    userId: target.id,
     email: target.email,
     ip: ctx.ip,
     userAgent: ctx.userAgent,
-    metadata: { reason: "password_reset_link_issued", via: audit.via, targetUserId: target.id },
+    metadata: {
+      reason: "password_reset_link_issued",
+      via: audit.via,
+      ...(audit.actorUserId ? { issuedByUserId: audit.actorUserId } : {}),
+    },
   });
 
   return { resetUrl: passwordResetUrlFor(token), expiresAt: expiresAt.toISOString() };
 }
 
 /**
- * An owner makes a reset link for someone else in their workspace. Your own password is changed from
- * Settings → Security, which asks for the current one; this path deliberately does not.
+ * An owner makes a reset link for an admin or member of their workspace. Your own password is changed from
+ * Settings → Security, which asks for the current one; another owner's needs the server operator.
  */
 export async function createPasswordResetLink(
   s: SessionContext,
@@ -123,10 +130,18 @@ export async function createPasswordResetLink(
   }
   const target = await db.user.findFirst({
     where: { id: userId, organizationId: s.organizationId },
-    select: { id: true, organizationId: true, email: true, disabledAt: true },
+    select: { id: true, organizationId: true, email: true, role: true, disabledAt: true },
   });
   if (!target) throw new AppError("NOT_FOUND", "That member is not part of this workspace.");
   if (target.disabledAt) throw new AppError("CONFLICT", "That member has been removed from the workspace.");
+  // A link lets whoever holds it act as that person. Owners may demote or remove each other, which is visible;
+  // quietly becoming another owner is not something one owner should be able to do alone.
+  if (target.role === "OWNER") {
+    throw new AppError(
+      "CONFLICT",
+      "Owners can't make reset links for other owners. Whoever runs the server can, with npm run user:reset-link.",
+    );
+  }
 
   return issue(target, { actorUserId: s.userId, via: "settings" });
 }
@@ -177,7 +192,11 @@ export async function resetPasswordWithToken(
   ctx: ResetPasswordContext,
 ): Promise<{ email: string }> {
   await enforce(RATE_RULES.passwordResetIp, ctx.ip);
-  const { password } = ResetPasswordInputSchema.parse(input);
+  const parsed = ResetPasswordInputSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new AppError("VALIDATION", parsed.error.issues[0]?.message ?? "Choose a new password.");
+  }
+  const { password } = parsed.data;
 
   const user = await verify(token, new Date());
   if (!user) throw new AppError("NOT_FOUND", INVALID_LINK);

@@ -9,7 +9,7 @@ import { verifyPassword } from "@/server/auth/password";
 import type { SessionContext } from "@/server/auth/types";
 import { db } from "@/server/db";
 import { createTestOrg } from "../helpers/factory";
-import { strongPassword, uniqueEmail, uniqueIp } from "./helpers";
+import { strongPassword, uniqueEmail, uniqueIp, withEnv } from "./helpers";
 
 /**
  * Owner-issued and operator-issued password reset links (no email provider). The links are stateless HMACs
@@ -100,9 +100,10 @@ describe("password reset links", () => {
     });
     expect(events).toEqual([
       {
+        // Recorded against the member, so it shows in their own trail; the owner who asked is in the metadata.
         type: "SESSIONS_REVOKED",
-        userId: org.user.id,
-        metadata: { reason: "password_reset_link_issued", via: "settings", targetUserId: member.id },
+        userId: member.id,
+        metadata: { reason: "password_reset_link_issued", via: "settings", issuedByUserId: org.user.id },
       },
       { type: "PASSWORD_CHANGED", userId: member.id, metadata: { method: "reset_link" } },
     ]);
@@ -150,6 +151,14 @@ describe("password reset links", () => {
       process.env.AUTH_SECRET = secret;
     }
 
+    // A demo workspace with DEMO_MODE off refuses sign-in, so its links are refused too.
+    await db.organization.update({ where: { id: org.organization.id }, data: { isDemo: true } });
+    await withEnv({ DEMO_MODE: "false" }, async () => {
+      expect(await getPasswordResetByToken(token)).toBeNull();
+    });
+    await db.organization.update({ where: { id: org.organization.id }, data: { isDemo: false } });
+    expect(await getPasswordResetByToken(token)).not.toBeNull();
+
     await db.organization.update({ where: { id: org.organization.id }, data: { suspendedAt: new Date() } });
     expect(await getPasswordResetByToken(token)).toBeNull();
   });
@@ -188,6 +197,10 @@ describe("password reset links", () => {
     const token = tokenOf((await createPasswordResetLink(org.session, member.id)).resetUrl);
 
     await expect(resetPasswordWithToken(token, { password: "password123" }, ctx())).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
+    // Over-long input is a plain validation message too, not an unexpected error.
+    await expect(resetPasswordWithToken(token, { password: "x".repeat(300) }, ctx())).rejects.toMatchObject({
       code: "VALIDATION",
     });
     await expect(resetPasswordWithToken(token, { password: strongPassword() }, ctx())).resolves.toEqual({
@@ -229,6 +242,12 @@ describe("password reset links", () => {
     await expect(createPasswordResetLink(org.session, org.user.id)).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(createPasswordResetLink(org.session, elsewhere.user.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(createPasswordResetLink(org.session, removed.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    // One owner must not be able to quietly take over another; the server operator can.
+    const coOwner = await addUser(org.organization.id, "OWNER", "Cy Owner");
+    await expect(createPasswordResetLink(org.session, coOwner.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(createPasswordResetLinkForOperator(coOwner.email)).resolves.toMatchObject({
+      organizationName: org.organization.name,
+    });
 
     // Refusals change nothing.
     const untouched = await db.user.findUniqueOrThrow({ where: { id: elsewhere.user.id } });
@@ -253,7 +272,7 @@ describe("password reset links", () => {
     });
     expect(issued).toEqual({
       userId: org.user.id,
-      metadata: { reason: "password_reset_link_issued", via: "operator", targetUserId: org.user.id },
+      metadata: { reason: "password_reset_link_issued", via: "operator" },
     });
 
     await expect(createPasswordResetLinkForOperator(uniqueEmail("nobody"))).rejects.toMatchObject({ code: "NOT_FOUND" });

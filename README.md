@@ -142,7 +142,7 @@ The Docker quick start is set up for one person on their own machine. Before any
 
 **Does it send email or post to Slack?** Not yet. `send_notification` and `read_dataset` are simulated by design, and sent reports land in an outbox. There is no email provider either, so invitation and password-reset links are copied and shared by hand.
 
-**Someone forgot their password.** A workspace owner opens *Settings → Members* and clicks **Reset password** next to them. That signs them out and makes a one-time link, valid for a day, to pass on. If you're the only owner and you're the one locked out, run `npm run user:reset-link -- you@example.com` on the machine running Foreman (Docker: `docker compose run --rm --no-deps web node dist/reset-password-link.cjs you@example.com`) and open the link it prints.
+**Someone forgot their password.** A workspace owner opens *Settings → Members* and clicks **Reset password** next to them. That signs them out and makes a one-time link, valid for a day, to pass on. Owners can't make links for other owners. If you're an owner and you're the one locked out, run `npm run user:reset-link -- you@example.com` on the machine running Foreman (Docker: `docker compose run --rm --no-deps web node dist/reset-password-link.cjs you@example.com`) and open the link it prints.
 
 **How do I reset everything?**
 - Docker: `docker compose down -v` removes the database *and* the generated secrets. The next `docker compose up` starts clean.

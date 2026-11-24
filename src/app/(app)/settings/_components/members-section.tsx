@@ -81,7 +81,7 @@ export function MembersSection({ members, invitations, currentUserId, canInvite,
               {canManage && !you ? (
                 <>
                   <MemberMenu userId={member.id} name={member.name} role={member.role} />
-                  <PasswordResetButton userId={member.id} name={member.name} />
+                  {member.role === "OWNER" ? null : <PasswordResetButton userId={member.id} name={member.name} />}
                 </>
               ) : null}
             </SettingsRow>

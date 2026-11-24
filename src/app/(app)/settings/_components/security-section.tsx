@@ -30,8 +30,8 @@ const EVENT_PHRASE: Record<SecurityEventType, string> = {
 };
 
 const VARIANT_PHRASE: Record<ActivityVariant, string> = {
-  reset_link_issued: "made a password reset link for a teammate",
-  reset_link_issued_by_operator: "was given a password reset link by whoever runs this server",
+  reset_link_issued: "was signed out and given a password reset link by an owner",
+  reset_link_issued_by_operator: "was signed out and given a password reset link by whoever runs this server",
   reset_link_used: "set a new password from a reset link",
 };
 

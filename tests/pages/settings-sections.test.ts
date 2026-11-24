@@ -102,9 +102,10 @@ describe("settings › copy speaks to the workspace owner, not the operator (des
     expect(member).toContain("Only the workspace owner can change roles, remove people or make password reset links.");
   });
 
-  it("members: an owner can make a reset link for a teammate, never for themselves, and nobody else sees it", () => {
-    const owner = render(h(members.MembersSection, { members: team, invitations: [], currentUserId: "user_1", canInvite: true, canManage: true }));
-    // One teammate (Ada) besides the owner, so exactly one button.
+  it("members: an owner can make a reset link for an admin or member, never for an owner, and nobody else sees it", () => {
+    const coOwner: MemberView = { id: "user_3", name: "Cy Owner", email: "cy@example.test", role: "OWNER", lastSignInAt: null, disabled: false, createdAt: "2026-09-03T00:00:00.000Z" };
+    const owner = render(h(members.MembersSection, { members: [...team, coOwner], invitations: [], currentUserId: "user_1", canInvite: true, canManage: true }));
+    // Ada is the only teammate who is not an owner, so exactly one button.
     expect(owner.match(/Reset password/g)).toHaveLength(1);
     expect(owner).toContain("Someone who forgot their password? Make them a reset link.");
 
@@ -270,8 +271,8 @@ describe("settings › security: recent activity folds repeats and hides address
       }),
     );
     expect(html).toContain("set a new password from a reset link");
-    expect(html).toContain("made a password reset link for a teammate");
-    expect(html).toContain("was given a password reset link by whoever runs this server");
+    expect(html).toContain("was signed out and given a password reset link by an owner");
+    expect(html).toContain("was signed out and given a password reset link by whoever runs this server");
   });
 
   it("collapseActivity stops at the row limit but still folds repeats into the last row", () => {
