@@ -30,6 +30,14 @@ describe("redactSecrets", () => {
     expect(redactSecrets("Worker Alex could not reach api.example.com (HTTP 503)")).toContain("api.example.com");
   });
 
+  it("redacts the token out of a password-reset path, whose signature follows a dot", () => {
+    const sig = "q".repeat(43);
+    const line = `request failed path=/reset-password/cmucasmyb01kwrwpbbgxzffb3.1795000000.${sig} status=500`;
+    const out = redactSecrets(line);
+    expect(out).toBe("request failed path=/reset-password/[redacted] status=500");
+    expect(out).not.toContain(sig);
+  });
+
   it("is linear on adversarial input", () => {
     const nasty = `${" ".repeat(60_000)}sk-${"a".repeat(60_000)} ${"/".repeat(20_000)}`;
     const started = performance.now();

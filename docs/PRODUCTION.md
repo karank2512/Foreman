@@ -89,6 +89,10 @@ export async function getInvitationByToken(token: string): Promise<{ organizatio
 export async function acceptInvitation(token: string, input: { name: string; password: string }, ctx: { ip: string; userAgent: string | null }): Promise<{ email: string }>;
 export async function getOrgSettings(organizationId: string): Promise<OrgSettingsView>;
 export async function updateOrgSettings(s: SessionContext, input: { name?: string; monthlyBudgetUsd?: number | null }): Promise<void>;   // OWNER
+export async function createPasswordResetLink(s: SessionContext, userId: unknown): Promise<{ resetUrl: string; expiresAt: string }>;   // OWNER; ADMIN/MEMBER targets only; signs them out
+export async function createPasswordResetLinkForOperator(email: string): Promise<{ resetUrl: string; expiresAt: string; organizationName: string }>;   // scripts/reset-password-link.ts only, never from a request
+export async function getPasswordResetByToken(token: string): Promise<{ email: string; name: string; organizationName: string; expiresAt: string } | null>;
+export async function resetPasswordWithToken(token: string, input: { password: string }, ctx: { ip: string; userAgent: string | null }): Promise<{ email: string }>;
 ```
 Invitation links are shown to the inviting admin to share (no email provider in Phase 1). Password reset works the same way: an owner makes a one-time link for a teammate, or the server operator runs `npm run user:reset-link -- <email>` (`src/server/account/password-reset.ts`). Self-service reset by email still needs an email provider.
 

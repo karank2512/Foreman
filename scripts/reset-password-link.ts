@@ -10,6 +10,10 @@
  * link is printed here for you to open or pass on. Needs the database and the app's AUTH_SECRET; spends nothing.
  */
 
+// Both are pure (no database, no environment), so importing them up front is safe before .env is loaded.
+import { errorMessage, isAppError } from "@/server/errors";
+import { redactSecrets } from "@/server/security/redact";
+
 const USAGE = "Usage: npm run user:reset-link -- <email>";
 
 /** .env the way the app loads it (existing variables win). dotenv is a dev dependency, absent from the image. */
@@ -32,8 +36,6 @@ async function main(): Promise<number> {
   // Imported only now, so the database client sees the DATABASE_URL that .env just provided.
   const { createPasswordResetLinkForOperator } = await import("@/server/account");
   const { db } = await import("@/server/db");
-  const { errorMessage, isAppError } = await import("@/server/errors");
-  const { redactSecrets } = await import("@/server/security/redact");
 
   try {
     const link = await createPasswordResetLinkForOperator(args[0]);
@@ -58,7 +60,8 @@ main().then(
     process.exitCode = code;
   },
   (e: unknown) => {
-    console.error(e);
+    // Reached only if an import or the disconnect itself fails; scrubbed like every other error this prints.
+    console.error(`Could not make a reset link: ${redactSecrets(errorMessage(e))}`);
     process.exitCode = 1;
   },
 );

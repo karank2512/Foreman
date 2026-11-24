@@ -21,6 +21,9 @@ const PATTERNS: ReadonlyArray<{ re: RegExp; replacement: string }> = [
   { re: /:\/\/([^\s:/@]+):[^\s@/]+@/g, replacement: `://$1:${REDACTED}@` },
   // Long opaque tokens (hex digests, base64 secrets). 40+ chars — cuids (25) and ISO dates stay readable.
   // The lookarounds keep URLs intact: a run inside "https://host/a/long/path" is preceded by "/" or ".".
+  // Password-reset links (`/reset-password/<userId>.<expiry>.<signature>`): the signature follows a "." so the
+  // opaque-token rule below deliberately skips it. A path like this reaches logs via onRequestError.
+  { re: /(\/reset-password\/)[A-Za-z0-9_.-]+/g, replacement: `$1${REDACTED}` },
   { re: /\b[A-Fa-f0-9]{40,}\b/g, replacement: REDACTED },
   { re: /(?<![A-Za-z0-9+/_.-])[A-Za-z0-9+/_-]{40,}={0,2}(?![A-Za-z0-9+/_.-])/g, replacement: REDACTED },
 ];
