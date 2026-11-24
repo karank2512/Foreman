@@ -53,6 +53,16 @@ export const ACCEPT_INVITE_MESSAGES = {
   unexpected: "We couldn't set up your account right now. Please try again.",
 } as const;
 
+export interface ResetPasswordState {
+  error: string | null;
+}
+
+export const RESET_PASSWORD_MESSAGES = {
+  missingFields: "Choose a new password.",
+  invalidLink: "That reset link is not valid or has expired.",
+  unexpected: "We couldn't reset your password right now. Please try again.",
+} as const;
+
 /** Presentation-only input bounds; the server re-validates everything (see `@/server/account/inputs.ts`). */
 export const FIELD_LIMITS = {
   name: 80,

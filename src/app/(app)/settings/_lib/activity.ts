@@ -17,6 +17,23 @@ export interface ActivityRow {
   count: number;
   /** ISO time of the newest event in the group. */
   latestAt: string;
+  /** A more specific reading of `type`, taken from the event's metadata (see `activityVariant`). */
+  variant: ActivityVariant | null;
+}
+
+/**
+ * Password-reset links reuse existing event types (no migration): issuing one revokes the person's sessions,
+ * and using one changes their password. The metadata says which, so the trail can say what really happened.
+ */
+export type ActivityVariant = "reset_link_issued" | "reset_link_issued_by_operator" | "reset_link_used";
+
+export function activityVariant(event: Pick<SecurityEventView, "type" | "metadata">): ActivityVariant | null {
+  const meta = event.metadata ?? {};
+  if (event.type === "SESSIONS_REVOKED" && meta.reason === "password_reset_link_issued") {
+    return meta.via === "operator" ? "reset_link_issued_by_operator" : "reset_link_issued";
+  }
+  if (event.type === "PASSWORD_CHANGED" && meta.method === "reset_link") return "reset_link_used";
+  return null;
 }
 
 /** How many rows the section shows after folding; the page fetches a few times more so folding has material. */
@@ -62,13 +79,20 @@ export function collapseActivity(events: SecurityEventView[], limit = ACTIVITY_R
   const rows: ActivityRow[] = [];
   for (const event of events) {
     const ip = publicIp(event.ip);
+    const variant = activityVariant(event);
     const last = rows[rows.length - 1];
-    if (last && last.type === event.type && last.userId === event.userId && last.ip === ip) {
+    if (
+      last &&
+      last.type === event.type &&
+      last.userId === event.userId &&
+      last.ip === ip &&
+      last.variant === variant
+    ) {
       last.count += 1;
       continue;
     }
     if (rows.length === limit) break;
-    rows.push({ id: event.id, type: event.type, userId: event.userId, ip, count: 1, latestAt: event.createdAt });
+    rows.push({ id: event.id, type: event.type, userId: event.userId, ip, count: 1, latestAt: event.createdAt, variant });
   }
   return rows;
 }

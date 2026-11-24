@@ -30,6 +30,8 @@ export const RATE_RULES = {
   signInIp: { name: "signin:ip", limit: 30, windowSec: 15 * MIN },
   signUpIp: { name: "signup:ip", limit: 5, windowSec: HOUR },
   inviteAcceptIp: { name: "invite:accept:ip", limit: 20, windowSec: HOUR },
+  /** Submitting a password-reset link. */
+  passwordResetIp: { name: "password:reset:ip", limit: 20, windowSec: HOUR },
   invitesCreateOrg: { name: "invite:create:org", limit: 30, windowSec: DAY },
   passwordChangeUser: { name: "password:change:user", limit: 5, windowSec: HOUR },
   /** Every action that calls an LLM. */
@@ -50,6 +52,7 @@ const FAIL_CLOSED = new Set<string>([
   RATE_RULES.signInIp.name,
   RATE_RULES.signUpIp.name,
   RATE_RULES.inviteAcceptIp.name,
+  RATE_RULES.passwordResetIp.name,
   RATE_RULES.passwordChangeUser.name,
 ]);
 

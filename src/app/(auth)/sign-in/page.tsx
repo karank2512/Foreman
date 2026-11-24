@@ -55,6 +55,11 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         demo={demo}
       />
 
+      {/* No email provider, so recovery is a link a workspace owner makes (or `npm run user:reset-link`). */}
+      <p className="mt-4 text-footnote text-pretty text-muted-foreground">
+        Forgot your password? Ask a workspace owner to make you a reset link from Settings → Members.
+      </p>
+
       {signUpOpen ? (
         <p className="mt-10 border-t border-border pt-6 text-[15px] leading-[22px] text-muted-foreground">
           New to Foreman?{" "}

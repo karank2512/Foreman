@@ -2,7 +2,7 @@ import type { SecurityEventType } from "@prisma/client";
 import { RelativeTime } from "@/components/relative-time";
 import { Card } from "@/components/ui/card";
 import type { SecurityEventView } from "@/server/security";
-import { collapseActivity } from "../_lib/activity";
+import { collapseActivity, type ActivityVariant } from "../_lib/activity";
 import { SettingsGroup, SettingsRow } from "./settings-list";
 import { PasswordForm, SignOutEverywhere } from "./security-controls";
 
@@ -27,6 +27,12 @@ const EVENT_PHRASE: Record<SecurityEventType, string> = {
   ORG_SETTINGS_CHANGED: "changed the workspace settings",
   RATE_LIMITED: "was asked to slow down",
   BUDGET_EXCEEDED: "hit the monthly spend cap",
+};
+
+const VARIANT_PHRASE: Record<ActivityVariant, string> = {
+  reset_link_issued: "made a password reset link for a teammate",
+  reset_link_issued_by_operator: "was given a password reset link by whoever runs this server",
+  reset_link_used: "set a new password from a reset link",
 };
 
 export interface SecuritySectionProps {
@@ -86,7 +92,8 @@ export function SecuritySection({ user, passwordMinLength, events, names, scoped
                   className="mx-6 flex flex-col gap-1 border-b border-border py-3.5 last:border-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
                 >
                   <p className="text-[15px] text-pretty text-foreground">
-                    <span className="font-medium">{who}</span> {EVENT_PHRASE[row.type]}
+                    <span className="font-medium">{who}</span>{" "}
+                    {row.variant ? VARIANT_PHRASE[row.variant] : EVENT_PHRASE[row.type]}
                     {times}
                     {where}
                   </p>

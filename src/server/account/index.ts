@@ -30,20 +30,33 @@ export {
 } from "./invitations";
 export type { AcceptInvitationContext } from "./invitations";
 
+export {
+  PASSWORD_RESET_TTL_HOURS,
+  createPasswordResetLink,
+  createPasswordResetLinkForOperator,
+  getPasswordResetByToken,
+  passwordResetUrlFor,
+  resetPasswordWithToken,
+} from "./password-reset";
+export type { ResetPasswordContext } from "./password-reset";
+
 export { getOrgSettings, updateOrgSettings } from "./org-settings";
 
 export {
   AcceptInvitationInputSchema,
   ChangePasswordInputSchema,
   CreateInvitationInputSchema,
+  ResetPasswordInputSchema,
   SignUpInputSchema,
   UpdateOrgSettingsInputSchema,
   inviteTokenSchema,
+  resetTokenSchema,
 } from "./inputs";
 export type {
   AcceptInvitationInput,
   ChangePasswordInput,
   CreateInvitationInput,
+  ResetPasswordInput,
   SignUpInput,
   UpdateOrgSettingsInput,
 } from "./inputs";

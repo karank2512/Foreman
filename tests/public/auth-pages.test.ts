@@ -55,7 +55,7 @@ describe("touch targets (design-public-auth-006)", () => {
   });
 
   it("pads the tertiary 'Sign in ›' / 'Create an account ›' links to a 44px row", async () => {
-    for (const file of ["sign-in/page.tsx", "sign-up/page.tsx", "invite/[token]/page.tsx"]) {
+    for (const file of ["sign-in/page.tsx", "sign-up/page.tsx", "invite/[token]/page.tsx", "reset-password/[token]/page.tsx"]) {
       const source = await read(`${AUTH}${file}`);
       const links = source.match(/<Link[^>]*>/g) ?? [];
       expect(links.length, file).toBeGreaterThan(0);

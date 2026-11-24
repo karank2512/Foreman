@@ -68,5 +68,16 @@ export const UpdateOrgSettingsInputSchema = z
   .refine((v) => v.name !== undefined || v.monthlyBudgetUsd !== undefined, "Nothing to change");
 export type UpdateOrgSettingsInput = z.infer<typeof UpdateOrgSettingsInputSchema>;
 
+export const ResetPasswordInputSchema = z.object({
+  password: rawPasswordSchema,
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordInputSchema>;
+
+/** `<userId>.<expiresAt unix seconds>.<base64url HMAC-SHA256>` — see `password-reset.ts`. */
+export const resetTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]{1,64}\.[0-9]{1,12}\.[A-Za-z0-9_-]{43}$/, "That reset link is not valid");
+
 /** Invitation tokens are 32 random bytes, hex-encoded. Anything else cannot match a stored hash. */
 export const inviteTokenSchema = z.string().trim().regex(/^[0-9a-f]{64}$/, "That invite link is not valid");

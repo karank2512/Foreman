@@ -39,7 +39,9 @@ RUN npx prisma generate \
  && npx esbuild docker/seed-demo.ts --bundle --platform=node --target=node22 --format=cjs --packages=external \
       --tsconfig=tsconfig.json --outfile=dist/seed-demo.cjs \
  && npx esbuild scripts/smoke-live.ts --bundle --platform=node --target=node22 --format=cjs --packages=external \
-      --tsconfig=tsconfig.json --outfile=dist/smoke-live.cjs
+      --tsconfig=tsconfig.json --outfile=dist/smoke-live.cjs \
+ && npx esbuild scripts/reset-password-link.ts --bundle --platform=node --target=node22 --format=cjs --packages=external \
+      --tsconfig=tsconfig.json --outfile=dist/reset-password-link.cjs
 
 # ── prod-deps: runtime dependency tree (no devDependencies) ─────────────────────
 # The worker bundle and the prisma CLI both resolve from here; the standalone server overlays its traced copies.
