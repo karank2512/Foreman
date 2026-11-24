@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { config } from "@/server/config";
 import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
@@ -6,7 +8,7 @@ import { normalizeEmail } from "@/server/auth/authorize";
 import { hashPassword } from "@/server/auth/password";
 import { assertCan } from "@/server/auth/permissions";
 import type { SessionContext } from "@/server/auth/types";
-import { RATE_RULES, enforce, hashEmail, recordSecurityEvent, requestContext, resetLimit } from "@/server/security";
+import { RATE_RULES, enforce, hashEmail, recordSecurityEvent, resetLimit } from "@/server/security";
 import { ResetPasswordInputSchema, resetTokenSchema, type ResetPasswordInput } from "./inputs";
 import { assertPasswordPolicy } from "./password-policy";
 
@@ -27,6 +29,7 @@ export const PASSWORD_RESET_TTL_HOURS = 24;
 const RESET_PATH = "/reset-password";
 const TOKEN_CONTEXT = "foreman:password-reset:v1";
 const INVALID_LINK = "That reset link is not valid or has expired.";
+const userIdSchema = z.string().min(1).max(64);
 
 const baseUrl = () => config.publicUrl ?? "http://localhost:3000";
 
@@ -89,23 +92,49 @@ async function issue(
   target: { id: string; organizationId: string; email: string },
   audit: { actorUserId?: string; via: "settings" | "operator" },
 ): Promise<{ resetUrl: string; expiresAt: string }> {
-  const now = new Date();
-  const updated = await db.user.update({
-    where: { id: target.id },
-    data: { sessionVersion: { increment: 1 } },
-    select: { sessionVersion: true },
+  // Everything that would make the link dead on arrival is refused BEFORE anyone is signed out.
+  signingKey();
+  const organization = await db.organization.findUnique({
+    where: { id: target.organizationId },
+    select: { suspendedAt: true, isDemo: true },
   });
-  const { token, expiresAt } = mint(target.id, updated.sessionVersion, now);
+  if (!organization || organization.suspendedAt) {
+    throw new AppError("CONFLICT", "That workspace is suspended, so a reset link would not work.");
+  }
+  if (organization.isDemo && !config.auth.demoMode) {
+    throw new AppError("CONFLICT", "The demo workspace can't be signed into while DEMO_MODE is off.");
+  }
 
-  const ctx = audit.via === "settings" ? await requestContext() : { ip: undefined, userAgent: null };
+  // The bump re-states every condition the caller checked, so a removal (or, from settings, a promotion to
+  // owner) that lands between the check and here makes this update find nothing instead of minting a link.
+  let sessionVersion: number;
+  try {
+    const updated = await db.user.update({
+      where: {
+        id: target.id,
+        organizationId: target.organizationId,
+        disabledAt: null,
+        ...(audit.via === "settings" ? { role: { not: "OWNER" as const } } : {}),
+      },
+      data: { sessionVersion: { increment: 1 } },
+      select: { sessionVersion: true },
+    });
+    sessionVersion = updated.sessionVersion;
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      throw new AppError("CONFLICT", "That account changed while the link was being made. Try again.");
+    }
+    throw e;
+  }
+  const { token, expiresAt } = mint(target.id, sessionVersion, new Date());
+
   // Recorded against the person whose sessions ended, so it shows in their own trail too; who asked is metadata.
+  // No ip/userAgent: they would be the issuer's, shown in the member's own trail.
   await recordSecurityEvent({
     type: "SESSIONS_REVOKED",
     organizationId: target.organizationId,
     userId: target.id,
     email: target.email,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
     metadata: {
       reason: "password_reset_link_issued",
       via: audit.via,
@@ -122,9 +151,13 @@ async function issue(
  */
 export async function createPasswordResetLink(
   s: SessionContext,
-  userId: string,
+  rawUserId: unknown,
 ): Promise<{ resetUrl: string; expiresAt: string }> {
   assertCan(s, "members.manage");
+  // Client-controlled: anything but a plain id string (an object would read as a Prisma filter) is refused.
+  const parsedId = userIdSchema.safeParse(rawUserId);
+  if (!parsedId.success) throw new AppError("NOT_FOUND", "That member is not part of this workspace.");
+  const userId = parsedId.data;
   if (userId === s.userId) {
     throw new AppError("CONFLICT", "To change your own password, use Settings → Security.");
   }

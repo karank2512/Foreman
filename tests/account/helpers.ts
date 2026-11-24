@@ -51,6 +51,7 @@ export async function withRateLimiting(
       for (const ip of subjects.ips ?? []) {
         await resetLimit(RATE_RULES.signUpIp, ip);
         await resetLimit(RATE_RULES.inviteAcceptIp, ip);
+        await resetLimit(RATE_RULES.passwordResetIp, ip);
       }
       for (const orgId of subjects.orgIds ?? []) await resetLimit(RATE_RULES.invitesCreateOrg, orgId);
       for (const userId of subjects.userIds ?? []) await resetLimit(RATE_RULES.passwordChangeUser, userId);

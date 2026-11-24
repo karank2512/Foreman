@@ -6,10 +6,11 @@ import {
   resetPasswordWithToken,
 } from "@/server/account";
 import { verifyPassword } from "@/server/auth/password";
+import { RATE_RULES, hashEmail, isLocked, lock, resetLimit } from "@/server/security";
 import type { SessionContext } from "@/server/auth/types";
 import { db } from "@/server/db";
 import { createTestOrg } from "../helpers/factory";
-import { strongPassword, uniqueEmail, uniqueIp, withEnv } from "./helpers";
+import { strongPassword, uniqueEmail, uniqueIp, withEnv, withRateLimiting } from "./helpers";
 
 /**
  * Owner-issued and operator-issued password reset links (no email provider). The links are stateless HMACs
@@ -183,7 +184,7 @@ describe("password reset links", () => {
     for (const bad of forged) {
       expect(await getPasswordResetByToken(bad), bad).toBeNull();
       await expect(resetPasswordWithToken(bad, { password: strongPassword() }, ctx())).rejects.toMatchObject({
-        code: expect.stringMatching(/NOT_FOUND|VALIDATION/),
+        code: "NOT_FOUND",
       });
     }
     // None of that spent the real link.
@@ -276,5 +277,81 @@ describe("password reset links", () => {
     });
 
     await expect(createPasswordResetLinkForOperator(uniqueEmail("nobody"))).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    const removed = await addUser(org.organization.id, "MEMBER");
+    await db.user.update({ where: { id: removed.id }, data: { disabledAt: new Date() } });
+    await expect(createPasswordResetLinkForOperator(removed.email)).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("refuses up front, without signing anyone out, when the link could not work", async () => {
+    const org = await createTestOrg("reset-deadlink");
+    cleanup = org.cleanup;
+    const member = await addUser(org.organization.id, "MEMBER");
+    const version = async () => (await db.user.findUniqueOrThrow({ where: { id: member.id } })).sessionVersion;
+
+    await db.organization.update({ where: { id: org.organization.id }, data: { suspendedAt: new Date() } });
+    await expect(createPasswordResetLink(org.session, member.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    await db.organization.update({ where: { id: org.organization.id }, data: { suspendedAt: null, isDemo: true } });
+    await withEnv({ DEMO_MODE: "false" }, async () => {
+      await expect(createPasswordResetLink(org.session, member.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+    await db.organization.update({ where: { id: org.organization.id }, data: { isDemo: false } });
+    await withEnv({ AUTH_SECRET: undefined }, async () => {
+      await expect(createPasswordResetLink(org.session, member.id)).rejects.toMatchObject({ code: "INTERNAL" });
+    });
+    expect(await version()).toBe(member.sessionVersion);
+
+    // A client-controlled id that is not a plain string never reaches a query.
+    await expect(createPasswordResetLink(org.session, { not: org.user.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    // Once nothing stands in the way, the same request works.
+    await expect(createPasswordResetLink(org.session, member.id)).resolves.toMatchObject({
+      resetUrl: expect.stringContaining("/reset-password/"),
+    });
+  });
+
+  it("records no IP or browser on the member's event (they would be the owner's)", async () => {
+    const org = await createTestOrg("reset-privacy");
+    cleanup = org.cleanup;
+    const member = await addUser(org.organization.id, "MEMBER");
+    await createPasswordResetLink(org.session, member.id);
+    const event = await db.securityEvent.findFirstOrThrow({
+      where: { organizationId: org.organization.id, type: "SESSIONS_REVOKED" },
+      select: { userId: true, ip: true, userAgent: true },
+    });
+    expect(event).toEqual({ userId: member.id, ip: null, userAgent: null });
+  });
+
+  it("throttles submissions per IP, before looking at the link", async () => {
+    const ip = uniqueIp();
+    await withRateLimiting({ ips: [ip] }, async () => {
+      for (let i = 0; i < RATE_RULES.passwordResetIp.limit; i++) {
+        await expect(
+          resetPasswordWithToken("not-a-token", { password: strongPassword() }, { ip, userAgent: null }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      }
+      await expect(
+        resetPasswordWithToken("not-a-token", { password: strongPassword() }, { ip, userAgent: null }),
+      ).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+    });
+  });
+
+  it("clears a sign-in lockout so the new password works straight away", async () => {
+    const org = await createTestOrg("reset-lockout");
+    cleanup = org.cleanup;
+    const member = await addUser(org.organization.id, "MEMBER");
+    const subject = hashEmail(member.email);
+    const ip = uniqueIp();
+    await withRateLimiting({ ips: [ip] }, async () => {
+      try {
+        await lock(RATE_RULES.signInAccount, subject);
+        expect((await isLocked(RATE_RULES.signInAccount, subject)).locked).toBe(true);
+
+        const token = tokenOf((await createPasswordResetLink(org.session, member.id)).resetUrl);
+        await resetPasswordWithToken(token, { password: strongPassword() }, { ip, userAgent: null });
+        expect((await isLocked(RATE_RULES.signInAccount, subject)).locked).toBe(false);
+      } finally {
+        await resetLimit(RATE_RULES.signInAccount, subject);
+      }
+    });
   });
 });
